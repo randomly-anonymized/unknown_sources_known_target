@@ -1,0 +1,4 @@
+scenario,quantity,value
+EXAMPLE-1,cost_adaptive_N1000,2333.3333333333335
+EXAMPLE-1,cost_discard_N1000_sim,3006.638
+EXAMPLE-1,online_share_x*,0.33333333333333337

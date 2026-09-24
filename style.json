@@ -1,0 +1,35 @@
+{
+  "_comment": "Edit this file to restyle every figure. Nothing in scripts/05_figures.py needs changing.",
+  "rc": {
+    "figure.dpi": 130,
+    "font.size": 9,
+    "axes.grid": true,
+    "grid.alpha": 0.25,
+    "axes.spines.top": false,
+    "axes.spines.right": false,
+    "legend.frameon": false,
+    "savefig.bbox": "tight"
+  },
+  "policies": {
+    "ALG1":              {"color": "#1a1a1a", "lw": 2.2},
+    "ALG2(beta=0.3)":    {"color": "#1a1a1a", "lw": 2.2},
+    "ALG2(beta=1)":      {"color": "#555555", "lw": 1.4, "ls": "--"},
+    "ALG2(beta=0.1)":    {"color": "#888888", "lw": 1.4, "ls": ":"},
+    "ALG2(greedy)":      {"color": "#b03a2e", "lw": 1.4, "ls": "-."},
+    "ORACLE-CL":         {"color": "#2e86c1", "lw": 1.6},
+    "ORACLE-OL":         {"color": "#28b463", "lw": 1.6, "ls": "--"},
+    "ORACLE-OL-iid":     {"color": "#28b463", "lw": 1.0, "ls": ":"},
+    "ORACLE-OL-mincost": {"color": "#28b463", "lw": 1.6, "ls": "--"},
+    "ETC(eps=0.1)":      {"color": "#8e44ad", "lw": 1.4},
+    "N1-CHEAPEST":       {"color": "#e67e22", "lw": 1.6},
+    "N1-EXPENSIVE":      {"color": "#d35400", "lw": 1.0, "ls": ":"},
+    "N2-UNIFORM":        {"color": "#c0392b", "lw": 1.6},
+    "N3-POOLPROP":       {"color": "#7f8c8d", "lw": 1.4}
+  },
+  "default_policy": {"lw": 1.2},
+  "reference_lines": {"color": "#000000"},
+  "strata_palette": ["#2e86c1", "#e67e22", "#28b463", "#8e44ad", "#c0392b", "#7f8c8d"],
+  "ladder_palette": ["#1a1a1a", "#2e86c1", "#28b463", "#e67e22", "#8e44ad", "#c0392b"],
+  "annotation_fontsize": 5.5,
+  "legend_fontsize": 6.5
+}

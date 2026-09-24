@@ -1,0 +1,7 @@
+{
+ "adult_sha256": "8f3986eeaa6d4186",
+ "n_adults": 29522,
+ "cost_online": 72.0,
+ "cost_offline": 199.0,
+ "min_pool_n": 150
+}
