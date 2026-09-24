@@ -1,5 +1,5 @@
 """Tier 3 (sec. 6): cost-aware sampling. Stages: e31 (support selection), e32 (end-to-end),
-e33 (c0 trade-off), refs (cost references / break-even table)."""
+e33 (c0 trade-off), e34 (myopic-rule counterexample, Example 2), refs (cost references / break-even table)."""
 import json, os, sys
 import numpy as np, pandas as pd
 
@@ -8,7 +8,7 @@ sys.path.insert(0, ROOT)
 from src.env import categorical_env
 from src.geometry import enumerate_supports, support_table, feasible_allocation
 from src.policies import (Alg2UCB, OracleCL, Alg3ThenAlg2, MyopicCost, FixedArm, RoundRobin,
-                          OpenLoopHerding, simplex_heights_batch)
+                          OpenLoopHerding, Alg1Sign, simplex_heights_batch)
 from src.runner import run, log_checkpoints, lp_discard_cost
 from src.theory import thm3_cost_bound, thm3_n
 
@@ -148,6 +148,29 @@ def stage_e33():
     pd.DataFrame(rows).to_csv(f"{RES}/E3_c0_tradeoff.csv", index=False)
 
 
+def stage_e34():
+    """Example 2 of the manuscript: the myopic cost-ratio rule pays 21/9 per recruit, support selection ~1.
+    Arms A (p=0.4, $1), B (p=0.9, $1), C (p=0, $4); target share p_G = 0.5 of the designated group."""
+    mu = np.array([[0.4, 0.6], [0.9, 0.1], [0.0, 1.0]])
+    env = categorical_env(mu, np.array([0.5, 0.5]), np.array([1.0, 1.0, 4.0]), names=["A", "B", "C"])
+    T, R = 100_000, 100
+    pols = [MyopicCost(oracle=True, tie_arm=1, tag="MYOPIC-COST(oracle,tie=B)"),
+            MyopicCost(oracle=True, tag="MYOPIC-COST(oracle,tie=least-sampled)"),
+            Alg1Sign(arm_high=1, arm_low=0, coord=0), Alg3ThenAlg2(n=1000, c0=0.1, beta=1.0)]
+    rows = []
+    for pol in pols:
+        df, _ = run(env, pol, T, R, seed=8001, checkpoints=[T])
+        r = df.iloc[-1]
+        rows.append(dict(policy=pol.name if pol.name != "ALG1" else "ALG1 on {A,B}", T=T, R=R,
+                         cost_per_sample=r.cost_per_sample, err_share=r.err_linf_mean,
+                         pull_A=r.pull_A, pull_B=r.pull_B, pull_C=r.pull_C,
+                         fallback=float(np.mean(pol.fallback)) if getattr(pol, "fallback", None) is not None else np.nan))
+    df = pd.DataFrame(rows)
+    df.to_csv(f"{RES}/E3_myopic_counterexample.csv", index=False)
+    print(df.to_string(index=False, float_format=lambda v: f"{v:.4g}"))
+    print(f"analytic: myopic 21/9 = {21/9:.4f}, support {{A,B}} = 1")
+
+
 def stage_refs():
     sc, env = scenario()
     mu, p_G, cost = env.mu, env.p_G, env.cost
@@ -168,4 +191,4 @@ def stage_refs():
 
 
 if __name__ == "__main__":
-    dict(e31=stage_e31, e32=stage_e32, e33=stage_e33, refs=stage_refs)[sys.argv[1]]()
+    dict(e31=stage_e31, e32=stage_e32, e33=stage_e33, e34=stage_e34, refs=stage_refs)[sys.argv[1]]()

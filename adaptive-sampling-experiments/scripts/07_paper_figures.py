@@ -72,8 +72,8 @@ def two_source_bounds(ax, T, s):
 
 # ------------------------------------------------------------------ main-text figure
 def fig_main():
-    fig, ax = plt.subplots(1, 3, figsize=(FULL_W, 2.0))
-    fig.subplots_adjust(left=0.065, right=0.995, bottom=0.185, top=0.735, wspace=0.34)
+    fig, ax = plt.subplots(1, 3, figsize=(FULL_W, 1.88))
+    fig.subplots_adjust(left=0.065, right=0.995, bottom=0.195, top=0.72, wspace=0.34)
     # (a) two sources
     d = pd.read_csv(f"{RES}/E1_rates_T1-AGE.csv"); s = summary("T1-AGE")
     plot_rates(ax[0], d, ["ALG1", "ORACLE-OL", "ETC(eps=0.1)", "N1-CHEAPEST", "N2-UNIFORM"],

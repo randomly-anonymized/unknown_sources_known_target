@@ -11,7 +11,7 @@ of it defined by NHIS variables.
 python3 scripts/01_build_scenarios.py                   # NHIS -> data/scenarios/*.json + results/E0_scenarios.csv
 python3 scripts/02_tier1.py age|black|example1|robust   # sec. 2-3   (E1)
 python3 scripts/03_tier2.py diag|e21a1|e21a2|e21b|e22a|e22b|e24a|e24b|e25   # sec. 5 (E2)
-python3 scripts/04_tier3.py refs|e31|e32|e33            # sec. 6     (E3)
+python3 scripts/04_tier3.py refs|e31|e32|e33|e34        # sec. 6     (E3)
 python3 scripts/05_figures.py                           # figures/F0-F8
 python3 scripts/06_tables.py                            # results/E5_*.csv
 python3 scripts/07_paper_figures.py                     # figures/paper/*.pdf (manuscript figures)

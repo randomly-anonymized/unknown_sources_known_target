@@ -67,9 +67,10 @@ class Alg2UCB(Policy):
 
 class MyopicCost(Policy):
     """Cost-ratio heuristic rejected in sec. 6: argmin_a <S_t, muhat_a - p_G> / ell_a."""
-    def __init__(self, beta=0.3, delta=0.05, oracle=False):
+    def __init__(self, beta=0.3, delta=0.05, oracle=False, tie_arm=None, tag=None):
         self.beta, self.delta, self.oracle = beta, delta, oracle
-        self.name = "MYOPIC-COST" + ("(oracle)" if oracle else "")
+        self.tie_arm = tie_arm                  # arm used when S_t = 0 (default: least sampled)
+        self.name = tag or "MYOPIC-COST" + ("(oracle)" if oracle else "")
         self.uses_truth = oracle
     def reset(self, env, T, R): self.env = env
     def choose(self, t, st, rng):
@@ -82,7 +83,7 @@ class MyopicCost(Policy):
         a = np.argmin(drift, axis=1)
         zero = (np.linalg.norm(st.S, axis=1) == 0)
         if zero.any():
-            a = np.where(zero, np.argmin(st.N, axis=1), a)
+            a = np.where(zero, np.argmin(st.N, axis=1) if self.tie_arm is None else self.tie_arm, a)
         return a
 
 

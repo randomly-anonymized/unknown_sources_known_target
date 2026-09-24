@@ -6,7 +6,7 @@ python3 scripts/00_fetch_data.py                      # skips files already in d
 python3 scripts/01_build_scenarios.py                 # ~1 min
 for s in age black example1 robust;            do python3 scripts/02_tier1.py $s; done   # ~12 min
 for s in diag e21a1 e21a2 e21b e22a e22b e24a e24b e25; do python3 scripts/03_tier2.py $s; done  # ~25 min
-for s in refs e31 e32 e33;                     do python3 scripts/04_tier3.py $s; done   # ~12 min
+for s in refs e31 e32 e33 e34;                 do python3 scripts/04_tier3.py $s; done   # ~13 min
 python3 scripts/06_tables.py
 python3 scripts/05_figures.py                         # restyle via configs/style.json alone
 python3 scripts/07_paper_figures.py                   # manuscript figures, styled by configs/style-paper.json
