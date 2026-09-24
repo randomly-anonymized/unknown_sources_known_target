@@ -14,6 +14,7 @@ python3 scripts/03_tier2.py diag|e21a1|e21a2|e21b|e22a|e22b|e24a|e24b|e25   # se
 python3 scripts/04_tier3.py refs|e31|e32|e33            # sec. 6     (E3)
 python3 scripts/05_figures.py                           # figures/F0-F8
 python3 scripts/06_tables.py                            # results/E5_*.csv
+python3 scripts/07_paper_figures.py                     # figures/paper/*.pdf (manuscript figures)
 python3 tests/test_all.py                               # 9 correctness tests
 ```
 
@@ -34,6 +35,7 @@ minutes; peak memory under 300 MB. Every run is seeded and deterministic.
 | `data/scenarios/` | 30 scenario JSONs (channel means, target, costs, geometry) + respondent pools |
 | `results/` | one tidy CSV per experiment |
 | `figures/` | F0 channel compositions, F1 tier-1 rates, F2 tails, F3 tier-2 rates, F4 ladder, F5 cost, F6 support selection, F7 c₀ trade-off, F8 robustness |
+| `figures/paper/` | vector PDFs used by `main.tex` (Experiments section and its appendix), made by `scripts/07_paper_figures.py` from `results/*.csv` and styled by `configs/style-paper.json` |
 | `FINDINGS.md` | results organised by claim, including the negative ones |
 
 ## Data construction in one paragraph

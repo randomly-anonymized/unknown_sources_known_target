@@ -9,4 +9,5 @@ for s in diag e21a1 e21a2 e21b e22a e22b e24a e24b e25; do python3 scripts/03_ti
 for s in refs e31 e32 e33;                     do python3 scripts/04_tier3.py $s; done   # ~12 min
 python3 scripts/06_tables.py
 python3 scripts/05_figures.py                         # restyle via configs/style.json alone
+python3 scripts/07_paper_figures.py                   # manuscript figures, styled by configs/style-paper.json
 python3 tests/test_all.py
