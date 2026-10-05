@@ -13,6 +13,7 @@ Reads results/*.csv only; never re-simulates. Styling lives in configs/style-pap
 import glob, json, os
 import numpy as np, pandas as pd
 import matplotlib
+import matplotlib.ticker
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
@@ -74,8 +75,8 @@ def two_source_bounds(ax, T, s):
 
 # ------------------------------------------------------------------ main-text figure
 def fig_main():
-    fig, ax = plt.subplots(1, 3, figsize=(FULL_W, 1.88))
-    fig.subplots_adjust(left=0.065, right=0.995, bottom=0.195, top=0.72, wspace=0.34)
+    fig, ax = plt.subplots(1, 3, figsize=(FULL_W, 1.72))
+    fig.subplots_adjust(left=0.065, right=0.995, bottom=0.21, top=0.70, wspace=0.34)
     # (a) two sources
     d = pd.read_csv(f"{RES}/E1_rates_T1-AGE.csv"); s = summary("T1-AGE")
     plot_rates(ax[0], d, ["ALG1", "ORACLE-OL", "ETC(eps=0.1)", "N1-CHEAPEST", "N2-UNIFORM"],
@@ -110,8 +111,8 @@ def fig_main():
                 labels={"ALG3+2(n=400,c0=0.05)": "Alg. 3 $\\to$ 2", "CHEAP-DISCARD(ONLINE)": "cheap & discard",
                         "ALG2(beta=0.3)": "Alg. 2, all", "ORACLE-CL(I*)": "oracle on $I^\\star$"})
     ax[2].set_title("(c) 16 channels; ethnic target, fixed budget", pad=3)
-    ax[2].set_ylim(2e-6, 0.08)
-    ax[2].legend(loc="lower left", fontsize=5.4)
+    ax[2].set_ylim(3e-7, 0.08)
+    ax[2].legend(loc="lower left", fontsize=5.4, ncol=2, columnspacing=0.8, handlelength=1.8)
     fig.savefig(f"{OUT}/fig_main.pdf", bbox_inches=None); plt.close(fig)
 
 
@@ -136,7 +137,10 @@ def plot_budget(ax, ratio, policies, labels=None):
         ax.loglog(g.budget, g.err_mean, label=lab, **st)
     ax.set_xlabel("total budget (\\$)", labelpad=1)
     ax.set_ylabel("$\\|\\widehat p_T-p_G\\|_2$", labelpad=1)
-    ax.set_xlim(4.5e4, 9e6)
+    ax.set_xlim(4.6e5, 8.7e6)
+    ticks = [5e5, 1e6, 2e6, 4e6, 8e6]
+    ax.set_xticks(ticks); ax.set_xticklabels(["0.5M", "1M", "2M", "4M", "8M"])
+    ax.xaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
 
 
 def fig_ladder():
@@ -169,7 +173,7 @@ def fig_budget():
     ax[1].set_title("(b) offline cost \\$199 (meta-analysis medians, ratio 2.76)")
     ax[0].legend(loc="lower left", fontsize=5.4)
     for a in ax:
-        a.set_ylim(2e-6, 0.08)
+        a.set_ylim(4e-7, 0.08)
     fig.tight_layout(w_pad=1.0); fig.savefig(f"{OUT}/figA_budget.pdf"); plt.close(fig)
 
 

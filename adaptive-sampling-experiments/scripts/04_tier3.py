@@ -23,7 +23,7 @@ C0_GRID = [0.01, 0.02, 0.05, 0.10]
 R_SEL, T_E2E, R_E2E = 250, 20_000, 200
 COST_RANGE = {72.0: (3.9, 251.2), 199.0: (19.1, 839.0)}     # JMIR 2020 meta-analysis ranges
 COST_RATIO = float(os.environ.get("COST_RATIO", 1.5))         # offline / online cost in the cost experiments
-BUDGETS = np.geomspace(5e4, 8e6, 14)                            # e35: total budgets ($)
+BUDGETS = np.geomspace(5e5, 8e6, 13)                           # e35: total budgets ($)
 
 
 def scenario():
