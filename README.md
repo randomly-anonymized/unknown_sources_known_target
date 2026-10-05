@@ -11,7 +11,10 @@ of it defined by NHIS variables.
 python3 scripts/01_build_scenarios.py                   # NHIS -> data/scenarios/*.json + results/E0_scenarios.csv
 python3 scripts/02_tier1.py age|black|example1|robust   # sec. 2-3   (E1)
 python3 scripts/03_tier2.py diag|e21a1|e21a2|e21b|e22a|e22b|e24a|e24b|e25   # sec. 5 (E2)
-python3 scripts/04_tier3.py refs|e31|e32|e33|e34        # sec. 6     (E3)
+python3 scripts/04_tier3.py refs|e31|e32|e33|e34        # sec. 6     (E3); offline cost = $72 * COST_RATIO (default 1.5)
+for k in alg3 alg3n200 alg3n100 alg2 oracle discard discardportal; do python3 scripts/04_tier3.py e35 $k; done
+COST_RATIO=2.764 python3 scripts/04_tier3.py e35 alg3   # ... and alg2, oracle, discard: median costs
+python3 scripts/04_tier3.py e35merge                    # results/E3_budget.csv (error at a fixed budget)
 python3 scripts/05_figures.py                           # figures/F0-F8
 python3 scripts/06_tables.py                            # results/E5_*.csv
 python3 scripts/07_paper_figures.py                     # figures/paper/*.pdf (manuscript figures)

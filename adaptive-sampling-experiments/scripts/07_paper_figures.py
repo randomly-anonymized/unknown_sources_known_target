@@ -1,12 +1,14 @@
 """Manuscript figures (vector PDF) for the Experiments section and its appendix.
 Reads results/*.csv only; never re-simulates. Styling lives in configs/style-paper.json.
 
-  figures/paper/fig_main.pdf         two sources | many sources | margin ladder   (main text)
+  figures/paper/fig_main.pdf         two sources | many sources | error at a fixed budget   (main text)
   figures/paper/figA_twosource.pdf   both two-source instances, error and E|S_T|
   figures/paper/figA_tails.pdf       tail of |S_T| vs the Theorem-1 bound
   figures/paper/figA_robust.pdf      Algorithm 1 under violated assumptions and operational constraints
   figures/paper/figA_multidim.pdf    multi-label target, Black x age target, margin ladder over T
-  figures/paper/figA_cost.pdf        support selection, c0 trade-off, cost vs screening
+  figures/paper/figA_cost.pdf        support selection and c0 trade-off
+  figures/paper/figA_ladder.pdf      imbalance against the hull margin (six targets)
+  figures/paper/figA_budget.pdf      error at a fixed budget, all variants, two cost ratios
 """
 import glob, json, os
 import numpy as np, pandas as pd
@@ -103,25 +105,72 @@ def fig_main():
             "Thm. 1 (proof constants)"]
     fig.legend([hl[k] for k in keys], keys, loc="upper center", ncol=5, bbox_to_anchor=(0.5, 1.0),
                columnspacing=1.4, handlelength=2.4, fontsize=5.9)
-    # (c) imbalance at T = 1e5 against the hull margin
+    # (c) cost-aware sampling: error at a fixed total budget (offline cost $108)
+    plot_budget(ax[2], 1.5, ["ALG3+2(n=400,c0=0.05)", "CHEAP-DISCARD(ONLINE)", "ALG2(beta=0.3)", "ORACLE-CL(I*)"],
+                labels={"ALG3+2(n=400,c0=0.05)": "Alg. 3 $\\to$ 2", "CHEAP-DISCARD(ONLINE)": "cheap & discard",
+                        "ALG2(beta=0.3)": "Alg. 2, all", "ORACLE-CL(I*)": "oracle on $I^\\star$"})
+    ax[2].set_title("(c) 16 channels; ethnic target, fixed budget", pad=3)
+    ax[2].set_ylim(2e-6, 0.08)
+    ax[2].legend(loc="lower left", fontsize=5.4)
+    fig.savefig(f"{OUT}/fig_main.pdf", bbox_inches=None); plt.close(fig)
+
+
+BUDGET_STYLE = {
+    "ALG3+2(n=400,c0=0.05)": dict(label="Alg. 3 $\\to$ Alg. 2 ($n=400$)", color="#000000", lw=1.7),
+    "ALG3+2(n=200,c0=0.05)": dict(label="Alg. 3 $\\to$ Alg. 2 ($n=200$)", color="#555555", lw=1.0, ls="--"),
+    "ALG3+2(n=100,c0=0.05)": dict(label="Alg. 3 $\\to$ Alg. 2 ($n=100$)", color="#999999", lw=1.0, ls=":"),
+    "CHEAP-DISCARD(ONLINE)": dict(label="cheap & discard (online)", color="#D55E00", lw=1.3, marker="s", ms=2.2),
+    "CHEAP-DISCARD(PORTAL)": dict(label="cheap & discard (portal)", color="#E69F00", lw=1.0, ls="--", marker="s", ms=2.0),
+    "ALG2(beta=0.3)": dict(label="Alg. 2, all channels", color="#555555", lw=1.0, ls="-."),
+    "ORACLE-CL(I*)": dict(label="oracle closed loop on $I^\\star$", color="#0072B2", lw=1.0),
+}
+
+
+def plot_budget(ax, ratio, policies, labels=None):
+    d = pd.read_csv(f"{RES}/E3_budget.csv")
+    d = d[np.isclose(d.cost_ratio, ratio)]
+    for p in policies:
+        g = d[d.policy == p].sort_values("budget")
+        st = dict(BUDGET_STYLE[p]); lab = st.pop("label")
+        lab = (labels or {}).get(p, lab)
+        ax.loglog(g.budget, g.err_mean, label=lab, **st)
+    ax.set_xlabel("total budget (\\$)", labelpad=1)
+    ax.set_ylabel("$\\|\\widehat p_T-p_G\\|_2$", labelpad=1)
+    ax.set_xlim(4.5e4, 9e6)
+
+
+def fig_ladder():
+    """Imbalance at T = 1e5 against the hull margin (formerly Figure 1(c))."""
+    fig, ax = plt.subplots(1, 1, figsize=(3.3, 2.1))
     lad = pd.concat([pd.read_csv(f) for f in glob.glob(f"{RES}/E2_ladder_*.csv")])
     last = lad[lad["T"] == lad["T"].max()]
     for p in ["ALG2(beta=0.3)", "ORACLE-CL"]:
         g = last[last.policy == p].sort_values("margin_c")
-        ax[2].loglog(g.margin_c, g.S_norm_mean, marker="o", ms=2.8, label=label(p), **sty(p))
+        ax.loglog(g.margin_c, g.S_norm_mean, marker="o", ms=2.8, label=label(p), **sty(p))
     g = last[last.policy == "ORACLE-CL"].sort_values("margin_c")
-    offset = {"L5_K4_agesex": (-8, 3)}           # keep this label off the neighbouring segment
+    offset = {"L5_K4_agesex": (-8, 3)}
     for _, r in g.iterrows():
-        ax[2].annotate(f"$K$={int(r.K)}", (r.margin_c, r.S_norm_mean), textcoords="offset points",
-                       xytext=offset.get(r.ladder, (0, -8)), ha="center", fontsize=5.2, color="#0072B2")
+        ax.annotate(f"$K$={int(r.K)}", (r.margin_c, r.S_norm_mean), textcoords="offset points",
+                    xytext=offset.get(r.ladder, (0, -8)), ha="center", fontsize=5.2, color="#0072B2")
     c = np.logspace(np.log10(1.0e-3), np.log10(0.16), 50)
-    ax[2].loglog(c, 0.15 / c, color=REF["color"], lw=REF["lw"], ls=":", label="$0.15/c$")
-    ax[2].set_xlabel("hull margin $c$ of the target", labelpad=1)
-    ax[2].set_ylabel("$\\|S_T\\|_2$ at $T=10^5$", labelpad=1)
-    ax[2].set_title("(c) 16 channels; six targets of increasing $K$", pad=3)
-    ax[2].set_xlim(9e-4, 0.25); ax[2].set_ylim(0.25, 800)
-    ax[2].legend(loc="upper right", fontsize=5.6)
-    fig.savefig(f"{OUT}/fig_main.pdf", bbox_inches=None); plt.close(fig)
+    ax.loglog(c, 0.15 / c, color=REF["color"], lw=REF["lw"], ls=":", label="$0.15/c$")
+    ax.set_xlabel("hull margin $c$ of the target"); ax.set_ylabel("$\\|S_T\\|_2$ at $T=10^5$")
+    ax.set_xlim(9e-4, 0.25); ax.set_ylim(0.25, 800)
+    ax.legend(loc="upper right", fontsize=5.6)
+    fig.tight_layout(); fig.savefig(f"{OUT}/figA_ladder.pdf"); plt.close(fig)
+
+
+def fig_budget():
+    fig, ax = plt.subplots(1, 2, figsize=(FULL_W, 2.3))
+    plot_budget(ax[0], 1.5, ["ALG3+2(n=400,c0=0.05)", "ALG3+2(n=200,c0=0.05)", "ALG3+2(n=100,c0=0.05)",
+                             "CHEAP-DISCARD(ONLINE)", "CHEAP-DISCARD(PORTAL)", "ALG2(beta=0.3)", "ORACLE-CL(I*)"])
+    ax[0].set_title("(a) offline cost \\$108 (ratio 1.5)")
+    plot_budget(ax[1], 2.764, ["ALG3+2(n=400,c0=0.05)", "CHEAP-DISCARD(ONLINE)", "ALG2(beta=0.3)", "ORACLE-CL(I*)"])
+    ax[1].set_title("(b) offline cost \\$199 (meta-analysis medians, ratio 2.76)")
+    ax[0].legend(loc="lower left", fontsize=5.4)
+    for a in ax:
+        a.set_ylim(2e-6, 0.08)
+    fig.tight_layout(w_pad=1.0); fig.savefig(f"{OUT}/figA_budget.pdf"); plt.close(fig)
 
 
 # ------------------------------------------------------------------ appendix figures
@@ -230,7 +279,7 @@ def fig_multidim():
 
 
 def fig_cost():
-    fig, ax = plt.subplots(1, 4, figsize=(FULL_W, 1.85))
+    fig, ax = plt.subplots(1, 3, figsize=(FULL_W, 1.95))
     sel = pd.read_csv(f"{RES}/E3_support_selection.csv")
     base = sel[sel.cost_draw == 0]
     for j, (c0, g) in enumerate(base.groupby("c0")):
@@ -253,20 +302,10 @@ def fig_cost():
     ax[2].set_xlabel("\\$ per recruit"); ax[2].set_ylabel("$\\|\\widehat p_T-p_G\\|_2$ at $T=2\\cdot 10^4$")
     ax[2].set_title("(c) margin threshold $c_0$")
     ax[2].legend(loc="lower left")
-    ref = pd.read_csv(f"{RES}/E3_cost_reference.csv")
-    ax[3].plot(ref.r, ref.cost_adaptive, marker="o", ms=2.2, color="#000000", label="min-cost mix, no discards")
-    ax[3].plot(ref.r, ref.cost_quota_cheapest, marker="s", ms=2.2, color="#E69F00", ls="--",
-               label="quota screening, online")
-    ax[3].plot(ref.r, ref.cost_lp_discard, marker="^", ms=2.2, color="#0072B2", ls=":",
-               label="min-cost mix with discards")
-    ax[3].axvline(199 / 72, color=REF["color"], lw=0.5, ls=":")
-    ax[3].set_xlabel("offline / online cost ratio $r$"); ax[3].set_ylabel("\\$ per retained recruit")
-    ax[3].set_title("(d) cost of a representative recruit")
-    ax[3].legend(loc="upper left", fontsize=5.0)
     fig.tight_layout(w_pad=0.5); fig.savefig(f"{OUT}/figA_cost.pdf"); plt.close(fig)
 
 
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
-    for f in [fig_main, fig_twosource, fig_tails, fig_robust, fig_multidim, fig_cost]:
+    for f in [fig_main, fig_twosource, fig_tails, fig_robust, fig_multidim, fig_cost, fig_ladder, fig_budget]:
         f(); print("wrote", f.__name__)

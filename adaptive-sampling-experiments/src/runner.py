@@ -131,3 +131,65 @@ def poststratification_stats(counts, p_G):
     with np.errstate(divide="ignore", invalid="ignore"):
         deff = np.where(fail, np.nan, np.sum(p_G[None, :] ** 2 / np.where(phat > 0, phat, np.nan), axis=1))
     return deff, T[:, 0] / deff, fail
+
+
+def run_budget(env, policy, budgets, R, seed, T_cap):
+    """Run a policy until each replication has spent the largest budget. For every budget b, record
+    ||p_hat - p_G||_2 of the sample bought with at most b (the recruit that would exceed b is excluded).
+    Returns (err (R, len(budgets)), T (R, len(budgets)))."""
+    budgets = np.asarray(budgets, float)
+    rng = np.random.default_rng(seed)
+    st = State(R, env.m, env.K)
+    policy.reset(env, T_cap, R)
+    nb = len(budgets)
+    err = np.full((R, nb), np.nan); Tb = np.full((R, nb), np.nan)
+    j = np.zeros(R, dtype=int)
+    for t in range(T_cap):
+        a = policy.choose(t, st, rng)
+        Y = env.labels(env.draw_patterns(a, rng.random(R)))
+        new_cost = st.cost + env.cost[a]
+        while True:
+            m = (j < nb) & (new_cost > budgets[np.minimum(j, nb - 1)])
+            if not m.any():
+                break
+            err[m, j[m]] = np.linalg.norm(st.S[m], axis=1) / max(t, 1)
+            Tb[m, j[m]] = t
+            j[m] += 1
+        st.S += Y - env.p_G
+        st.alloc += env.mu[a] - env.p_G
+        st.N[np.arange(R), a] += 1
+        st.Ssum[np.arange(R), a] += Y
+        st.cost = new_cost
+        if (j >= nb).all():
+            break
+    return err, Tb
+
+
+def cheap_and_discard_budget(mu_cheap, p_G, ell, budgets, R, seed):
+    """Cheap & discard as in Example 1 of the manuscript, under a total budget b. The planned sample
+    size is the one the budget buys on average, N = floor((b / ell) / f) with f = max_k p_G,k / mu_k
+    (Example 1's arithmetic, using the composition of the cheap channel). Recruits are drawn from the
+    cheap channel one at a time and kept while their group's quota round(N p_G) is open; the procedure
+    stops when all quotas are full or the budget is spent. Every contact is paid.
+    Returns (err (R, nb), retained (R, nb), spent (R, nb), completed (R, nb))."""
+    rng = np.random.default_rng(seed)
+    mu_cheap = np.asarray(mu_cheap, float); p_G = np.asarray(p_G, float)
+    K = len(p_G); f = float(np.max(p_G / mu_cheap))
+    cum = np.cumsum(mu_cheap); cum[-1] = 1.0
+    nb = len(budgets)
+    err = np.zeros((R, nb)); kept_n = np.zeros((R, nb)); spent = np.zeros((R, nb)); completed = np.zeros((R, nb), bool)
+    for b_i, b in enumerate(budgets):
+        M = int(b // ell)
+        q = largest_remainder(p_G, int(M / f))
+        strata = np.searchsorted(cum, rng.random((R, M)), side="right").clip(0, K - 1)
+        onehot = np.zeros((R, M, K), dtype=np.int32)
+        np.put_along_axis(onehot, strata[:, :, None], 1, axis=2)
+        run_counts = np.cumsum(onehot, axis=1)                      # (R, M, K) counts after each contact
+        full = (run_counts >= q[None, None, :]).all(axis=2)
+        done = full.any(axis=1)
+        stop = np.where(done, np.argmax(full, axis=1) + 1, M)        # contacts actually paid
+        kept = np.minimum(run_counts[np.arange(R), stop - 1], q[None, :])
+        n = kept.sum(axis=1)
+        err[:, b_i] = np.linalg.norm(kept / np.maximum(n, 1)[:, None] - p_G, axis=1)
+        kept_n[:, b_i] = n; spent[:, b_i] = stop * ell; completed[:, b_i] = done
+    return err, kept_n, spent, completed

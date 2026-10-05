@@ -1,5 +1,9 @@
 """Tier 3 (sec. 6): cost-aware sampling. Stages: e31 (support selection), e32 (end-to-end),
-e33 (c0 trade-off), e34 (myopic-rule counterexample, Example 2), refs (cost references / break-even table)."""
+e33 (c0 trade-off), e34 (myopic-rule counterexample, Example 2), e35 (error at a fixed budget against
+cheap & discard), refs (cost references / break-even table).
+
+The cost experiments use online recruits at $72 and offline recruits at $72 * COST_RATIO (default 1.5, i.e.
+$108; set COST_RATIO=2.764 for the meta-analysis medians $72 / $199)."""
 import json, os, sys
 import numpy as np, pandas as pd
 
@@ -9,7 +13,7 @@ from src.env import categorical_env
 from src.geometry import enumerate_supports, support_table, feasible_allocation
 from src.policies import (Alg2UCB, OracleCL, Alg3ThenAlg2, MyopicCost, FixedArm, RoundRobin,
                           OpenLoopHerding, Alg1Sign, simplex_heights_batch)
-from src.runner import run, log_checkpoints, lp_discard_cost
+from src.runner import run, log_checkpoints, lp_discard_cost, run_budget, cheap_and_discard_budget
 from src.theory import thm3_cost_bound, thm3_n
 
 RES, SC = os.path.join(ROOT, "results"), os.path.join(ROOT, "data", "scenarios")
@@ -18,11 +22,14 @@ N_GRID = [25, 50, 100, 200, 400, 800, 1600]
 C0_GRID = [0.01, 0.02, 0.05, 0.10]
 R_SEL, T_E2E, R_E2E = 250, 20_000, 200
 COST_RANGE = {72.0: (3.9, 251.2), 199.0: (19.1, 839.0)}     # JMIR 2020 meta-analysis ranges
+COST_RATIO = float(os.environ.get("COST_RATIO", 1.5))         # offline / online cost in the cost experiments
+BUDGETS = np.geomspace(5e4, 8e6, 14)                            # e35: total budgets ($)
 
 
 def scenario():
     sc = json.load(open(os.path.join(SC, SID + ".json")))
-    env = categorical_env(np.array(sc['mu']), np.array(sc['p_G']), np.array(sc['cost']),
+    cost = np.where(np.array(sc['cost']) == 72.0, 72.0, 72.0 * COST_RATIO)
+    env = categorical_env(np.array(sc['mu']), np.array(sc['p_G']), cost,
                           names=sc['arms'], label_names=sc['labels'])
     env.c_margin = sc['margin_c']
     return sc, env
@@ -58,7 +65,8 @@ def stage_e31():
     true_margin = np.array([c for _, c, _, _ in truth])
     true_q = [q for _, _, q, _ in truth]
     rng = np.random.default_rng(5)
-    cost_draws = [cost] + [np.exp([rng.uniform(*np.log(COST_RANGE[c])) for c in cost]) for _ in range(9)]
+    cost_draws = [cost] + [np.exp([rng.uniform(*np.log(COST_RANGE[72.0 if c == 72.0 else 199.0])) for c in cost])
+                           for _ in range(9)]
     rows = []
     for n in N_GRID:
         muhat = np.stack([rng.multinomial(n, mu[a], size=R_SEL) / n for a in range(m)], axis=1)
@@ -116,7 +124,7 @@ def stage_e32():
     adm = sorted([t for t in truth if np.isfinite(t[3]) and t[1] >= 0.05], key=lambda z: z[3])
     I_star = list(adm[0][0])
     print(f"  cheapest admissible support (c0=0.05): {[env.names[i] for i in I_star]} ${adm[0][3]:.2f}")
-    x_cost = np.array(sc['x_star_mincost'])
+    x_cost, _ = feasible_allocation(mu, p_G, cost)
     pols = [Alg3ThenAlg2(n=100, c0=0.05, beta=0.3), Alg3ThenAlg2(n=25, c0=0.05, beta=0.3),
             Alg2UCB(0.3), MyopicCost(oracle=True), OracleCL(arms=I_star), OracleCL(),
             OpenLoopHerding(x_cost, "ORACLE-OL-mincost"),
@@ -149,10 +157,10 @@ def stage_e33():
 
 
 def stage_e34():
-    """Example 2 of the manuscript: the myopic cost-ratio rule pays 21/9 per recruit, support selection ~1.
-    Arms A (p=0.4, $1), B (p=0.9, $1), C (p=0, $4); target share p_G = 0.5 of the designated group."""
-    mu = np.array([[0.4, 0.6], [0.9, 0.1], [0.0, 1.0]])
-    env = categorical_env(mu, np.array([0.5, 0.5]), np.array([1.0, 1.0, 4.0]), names=["A", "B", "C"])
+    """Example 2 of the manuscript: the myopic cost-ratio rule pays 2 per recruit, support selection ~1.
+    Arms A (p=0.4, $1), B (p=0.9, $1), C (p=0.1, $3); target share p_G = 0.5 of the designated group."""
+    mu = np.array([[0.4, 0.6], [0.9, 0.1], [0.1, 0.9]])
+    env = categorical_env(mu, np.array([0.5, 0.5]), np.array([1.0, 1.0, 3.0]), names=["A", "B", "C"])
     T, R = 100_000, 100
     pols = [MyopicCost(oracle=True, tie_arm=1, tag="MYOPIC-COST(oracle,tie=B)"),
             MyopicCost(oracle=True, tag="MYOPIC-COST(oracle,tie=least-sampled)"),
@@ -168,7 +176,58 @@ def stage_e34():
     df = pd.DataFrame(rows)
     df.to_csv(f"{RES}/E3_myopic_counterexample.csv", index=False)
     print(df.to_string(index=False, float_format=lambda v: f"{v:.4g}"))
-    print(f"analytic: myopic 21/9 = {21/9:.4f}, support {{A,B}} = 1")
+    print("analytic: myopic 2, support {A,B} 1")
+
+
+E35_POLICIES = {
+    "alg3": lambda: Alg3ThenAlg2(n=400, c0=0.05, beta=0.3),
+    "alg3n200": lambda: Alg3ThenAlg2(n=200, c0=0.05, beta=0.3),
+    "alg3n100": lambda: Alg3ThenAlg2(n=100, c0=0.05, beta=0.3),
+    "alg2": lambda: Alg2UCB(0.3),
+    "oracle": None,                                           # closed loop on the cheapest admissible support
+}
+
+
+def stage_e35(key):
+    """Error ||p_hat - p_G||_2 at fixed total budgets. Writes results/E3_budget_parts/<ratio>_<key>.csv."""
+    sc, env = scenario()
+    mu, p_G, cost, names = env.mu, env.p_G, env.cost, env.names
+    out = os.path.join(RES, "E3_budget_parts"); os.makedirs(out, exist_ok=True)
+    R, rows = 200, []
+    if key.startswith("discard"):
+        arm = names.index("ONLINE" if key == "discard" else "PORTAL")
+        err, kept, spent, done = cheap_and_discard_budget(mu[arm], p_G, cost[arm], BUDGETS, 400, seed=9001)
+        for b_i, b in enumerate(BUDGETS):
+            rows.append(dict(policy=f"CHEAP-DISCARD({names[arm]})", budget=b, err_mean=err[:, b_i].mean(),
+                             err_median=np.median(err[:, b_i]), err_q90=np.quantile(err[:, b_i], .9),
+                             n_mean=kept[:, b_i].mean(), complete=float(done[:, b_i].mean()),
+                             spent_mean=spent[:, b_i].mean()))
+    else:
+        if key == "oracle":
+            supports = enumerate_supports(env.m, env.K)
+            adm = sorted([t for t in support_table(mu, p_G, cost, supports) if np.isfinite(t[3]) and t[1] >= 0.05],
+                         key=lambda z: z[3])
+            pol = OracleCL(arms=list(adm[0][0]))
+        else:
+            pol = E35_POLICIES[key]()
+        err, Tb = run_budget(env, pol, BUDGETS, R, seed=9002, T_cap=int(BUDGETS[-1] / cost.min()) + 10)
+        fb = float(np.mean(pol.fallback)) if getattr(pol, "fallback", None) is not None else np.nan
+        for b_i, b in enumerate(BUDGETS):
+            rows.append(dict(policy=pol.name if key != "oracle" else "ORACLE-CL(I*)", budget=b,
+                             err_mean=np.nanmean(err[:, b_i]), err_median=np.nanmedian(err[:, b_i]),
+                             err_q90=np.nanquantile(err[:, b_i], .9), n_mean=np.nanmean(Tb[:, b_i]),
+                             complete=np.nan, spent_mean=np.nan, fallback=fb))
+    df = pd.DataFrame(rows); df.insert(0, "cost_ratio", COST_RATIO)
+    df.to_csv(os.path.join(out, f"{COST_RATIO:g}_{key}.csv"), index=False)
+    print(df.to_string(index=False, float_format=lambda v: f"{v:.4g}"))
+
+
+def stage_e35_merge():
+    import glob
+    df = pd.concat([pd.read_csv(f) for f in sorted(glob.glob(os.path.join(RES, "E3_budget_parts", "*.csv")))])
+    df.to_csv(f"{RES}/E3_budget.csv", index=False)
+    print(df.pivot_table(index=["cost_ratio", "policy"], columns="budget", values="err_mean").to_string(
+        float_format=lambda v: f"{v:.1e}"))
 
 
 def stage_refs():
@@ -191,4 +250,8 @@ def stage_refs():
 
 
 if __name__ == "__main__":
-    dict(e31=stage_e31, e32=stage_e32, e33=stage_e33, e34=stage_e34, refs=stage_refs)[sys.argv[1]]()
+    if sys.argv[1] == "e35":
+        stage_e35(sys.argv[2])
+    else:
+        dict(e31=stage_e31, e32=stage_e32, e33=stage_e33, e34=stage_e34, e35merge=stage_e35_merge,
+             refs=stage_refs)[sys.argv[1]]()
