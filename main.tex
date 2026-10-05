@@ -27,9 +27,9 @@
 % \setlength{\pdfpagewidth}{8.5in}
 
 % If you use the natbib package, activate the following three lines:
-%\usepackage[round]{natbib}
-%\renewcommand{\bibname}{References}
-%\renewcommand{\bibsection}{\subsubsection*{\bibname}}
+\usepackage[round]{natbib}
+\renewcommand{\bibname}{References}
+\renewcommand{\bibsection}{\subsubsection*{\bibname}}
 
 % If you use BibTeX in apalike style, activate the following line:
 %\bibliographystyle{apalike}
@@ -38,8 +38,8 @@
 \usepackage{algorithmic}
 \usepackage{amsmath, amssymb, graphicx}
 \usepackage{placeins}
-\graphicspath{{adaptive-sampling-experiments/figures/paper/}}
-\usepackage[numbers,sort&compress]{natbib}
+\graphicspath{{figures/paper/}}
+% \usepackage[numbers,sort&compress]{natbib}
 \newtheorem{theorem}{Theorem}
 \newtheorem{lemma}{Lemma}
 \newtheorem{proof}{Proof}
@@ -48,6 +48,13 @@
 \newtheorem{remark}{Remark}
 \newtheorem{corollary}{Corollary}
 \usepackage{xcolor}
+\usepackage[hyphens]{url}
+\usepackage{hyperref}
+\hypersetup{
+    breaklinks=true, % Allows links to break across lines
+    colorlinks=false,
+    urlcolor=black
+}
 
 \newcommand{\matt}[1]{\textcolor{purple}{[*** Matt: #1 ***]}}
 \newcommand{\farzad}[1]{\textcolor{orange}{[*** Farzad: #1 ***]}}
@@ -78,7 +85,7 @@
 \aistatsaddress{ Institution 1 \And  Institution 2 \And Institution 3 } ]
 
 \begin{abstract}
-  This paper studies how to sequentially sample from multiple unknown source populations to match a known target population using as few samples as possible. This problem arises in polling, medical trials, and in the physical sciences. We describe an algorithm for the simplest case of two sources and show that it matches a lower bound up to constant factors. We extend this algorithm to the setting of multiple sources, and to when sources have different costs. Experiments with sixteen recruitment channels constructed from the 2023 National Health Interview Survey show that feedback is what yields the \(T^{-1}\) rate: an oracle that knows every channel's composition but does not react to the realized sample attains only \(T^{-1/2}\). They also show that the margin of the target inside the channels' convex hull governs how finely the target can be matched, and that selecting a cheap set of channels first lowers the recruitment cost, provided enough exploration is used to identify a feasible set.
+  This paper studies how to sequentially sample from multiple unknown source populations to match a known target population using as few samples as possible. This problem arises in polling, medical trials, and in scientific discovery. We give an algorithm for the simplest case of two sources and show that it matches a lower bound up to constant factors. We extend this algorithm to multiple sources and to when sources have different costs. Experiments based on the 2023 National Health Interview Survey show the benefit of this approach over baselines.
 \end{abstract}
 
 
@@ -87,11 +94,15 @@
 Imagine you are tasked with recruiting individuals to test a promising new medical treatment. You are asked to ensure that the overall population of individuals approximates the target population of the treatment. Further, to keep costs down, you must recruit as few individuals as possible, until your approximation error of the target is below a specific threshold. You have at your disposal different sources to select individuals for the test: online recruitment, telephone interviews, door-to-door questioning, and other outreach sources. While the population of each source is unknown, each is likely biased. For instance, online recruitment may over-represent younger subjects, whereas telephone interviews may over-represent older ones. How should you select the sources to best represent the target?
 
 % why it matters
-This question of representative, sample-efficient study design is at the heart of many real problems in medicine (CITE), polling (CITE), and scientific discovery (CITE). Continuing the above example, in medical treatment trials of type 1 diabetes, research has found large disparities in ethnic representation, including in key trials required for FDA approval of commercial devices \cite{akturk2021inequity}. This is a matter of life and death for underrepresented populations: even though only 9.3\% of type 1 diabetes cases in the United States affect Black populations \cite{akturk2021inequity}, their mortality rates are twice as high as other ethnic groups \cite{saydah2017disparities}. 
+This question of representative, sample-efficient study design is at the heart of many real problems in medicine \citep{sanathanan1991randomized}, polling \citep{gelman2016high}, and scientific discovery \citep{gao2022sample}. Continuing the above example, in medical treatment trials of type 1 diabetes research has found large disparities in ethnic representation, including in key trials required for FDA approval of commercial devices \citep{akturk2021inequity}. This is a matter of life and death for underrepresented populations: even though only 9.3\% of type 1 diabetes cases in the United States affect Black populations \citep{akturk2021inequity}, their mortality rates are twice as high as other ethnic groups \citep{saydah2017disparities}. 
 
 % a recommendation
-One potential solution recommended by recent work is to use adaptive trial designs \cite{goshrani2026role}. This work argues that `research funders and regulatory agencies should incentivize the design and conduct of adaptive trials, with embedded community involvement, and particularly targeting underrepresented populations'. Given a target population of individuals, how can we sample individuals to match that target?
-
+One potential solution recommended by a recent review is to use adaptive trial
+designs \citep{goshrani2026role}. This review argues that `research funders
+and regulatory agencies should incentivize the design and conduct of adaptive
+trials, with embedded community involvement, and particularly targeting
+underrepresented populations'. Given a target population of individuals, how
+can you adaptively sample individuals from your sources to match that target?
 
 % % TODO: why it is hard
 % However, if we have access to
@@ -100,70 +111,160 @@ One potential solution recommended by recent work is to use adaptive trial desig
 
 
 % TODO: our approah
-We study this question as a sequential decision problem. The data collector has access to several sampling sources, but the population of each source is unknown in advance. Their goal is to collect a set of samples that closely approximates a known target population. To do so, at each time step, the collector selects one source, and observes a randomly-sampled individual from that source.
+Building on work in multi-armed bandits, we develop algorithms that adaptively reduce the difference between the population of the collected sample and the target population. We begin by describing the case where a population can be described by a single dimension. We show how a simple approach that corrects the current sample population has optimal sample complexity up to constant factors. We extend this approach to multiple dimensions, and show that it also achieves the optimal sampling rate. When different sources have different costs we provide an algorithm and conditions under which it can simultaneously maintain the optimal sample rate and identify the cheapest sources.
+
+% TODO: re-title sections as number of dimensions instead of number of sources
+% TODO: rename T to n
+
+
+% We study this question as a sequential decision problem. The data collector has access to several sampling sources, but the population of each source is unknown in advance. At 
+
+
+% The goal is to collect a set of samples that closely approximates a known target population. To do so, at each time step, the collector selects one source, and observes a randomly-sampled individual from that source.
 
 
 
 
-The objective is to make the
-empirical composition of the final dataset as close as possible to a known target
-distribution. Thus, the problem can be viewed as a form of adaptive sampling or
-multi-armed bandit problem in which the arms are sampling methods and the
-observations reveal their unknown demographic distributions. Unlike a standard bandit problem, however, the objective is
-not to maximize cumulative reward. Instead, the data collector must choose the
-arms sequentially so that the empirical demographic distribution of the final
-sample,
-\begin{equation}
-\label{phat}
-\widehat p_T := \frac{1}{T}\sum_{t=1}^T Y_t,
-\end{equation}
-is as close as possible to the target population distribution \(p_G\).
-
-
-
-% \matt{i've passed through the above}
+% The objective is to make the
+% empirical composition of the final dataset as close as possible to a known target
+% distribution. Thus, the problem can be viewed as a form of adaptive sampling or
+% multi-armed bandit problem in which the sources are sampling methods and the
+% observations reveal their unknown demographic distributions. Unlike a standard bandit problem, however, the objective is
+% not to maximize cumulative reward. Instead, the data collector must choose the
+% sources sequentially so that the empirical demographic distribution of the final
+% sample,
 
 
 
 
 
-\section{Warm up: two sources}
+\section{Related Work}
 
-We first consider the simplest setting, consisting of two demographic groups and two sampling methods. Fix one of the two groups as the designated group—for example, White respondents in a White/non-White partition, or younger respondents in a younger/older partition—and define
+\paragraph{Adaptive stratified Monte Carlo.}
+A related line of work studies how to estimate an integral accurately when only
+a limited number of function evaluations are available. The domain is divided
+into smaller regions, called \emph{strata}. If the variance of the function is
+larger in one region, more samples are needed there to estimate its contribution
+accurately. Since these variances are generally unknown, 
+\cite{carpentier2011finite} treat the strata as arms in a multi-armed bandit
+problem and use an upper-confidence strategy to learn which regions have larger
+variance and should receive more samples. This line of work was later extended
+to settings in which the allocation and the partition itself are adapted
+\citep{carpentier2012adaptive,carpentier2013toward,carpentier2015adaptive}.
+
+Our objective is different. These methods adapt the sampling allocation to
+reduce the uncertainty in estimating an unknown integral. In our setting, the
+target \(p_G\) is already known. After every observation, we can measure the
+realized deviation of the current sample from this target and choose the next
+sampling method to correct that deviation. Thus, even if all arm distributions
+were known, our feedback rule would still remain adaptive.
+
+\paragraph{Post-hoc reweighting and importance sampling.}
+A second related approach is to collect observations from distributions that do
+not match the desired target and correct the mismatch afterward by assigning
+different weights to the observations. This is the idea behind importance
+sampling. When several sampling distributions are available, multiple
+importance sampling combines observations from these different sources with
+suitable weights \citep{elvira2019generalized}. There is also a large literature
+in which the sampling distributions themselves are adapted over time
+\citep{bugallo2017adaptive,elvira2021advances,lu2023daisee}.
+
+This is closely related to post-hoc reweighting. Our method instead tries to correct the imbalance during data
+collection. If some part of the target becomes overrepresented, the algorithm
+changes the sampling method so that future observations are more likely to come
+from underrepresented parts. The goal is therefore to make the unweighted
+empirical sample itself representative, rather than correcting the sample
+afterward through weights.
+\paragraph{Online balancing and covariate-adaptive randomization.}
+Another related line of work uses feedback to keep a cumulative imbalance
+small. In online vector balancing, a random vector first arrives and the
+algorithm then chooses a sign \(+1\) or \(-1\) for that vector in order to
+keep the signed sum small
+\citep{bansal2020online,bansal2021discrepancy}. A similar idea appears in
+clinical trials. Pocock and Simon \citep{pocock1975sequential} observe the
+characteristics of each new patient and then favor the treatment assignment
+that reduces imbalance in these characteristics across treatment groups. In
+both cases, however, the random observation is seen before the balancing
+decision is made. In our setting, the order is reversed: we first choose a
+sampling method \(A_t\), and only then observe the random outcome \(Y_t\)
+generated by that method.
+\paragraph{Herding.}
+The closest connection to our representation objective is herding. Herding
+starts from a known target and sequentially chooses observations so that their
+empirical moments approach the target moments \citep{welling2009herding}. Kernel
+herding extends this idea to continuous spaces and can achieve an
+\(O(T^{-1})\) error for suitable classes of functions, compared with the usual
+\(O(T^{-1/2})\) scale of independent random sampling
+\citep{chen2010supersamples}. Herding has also been connected to
+conditional-gradient optimization for minimizing moment discrepancy
+\citep{bach2012equivalence}.
+
+The main difference is that herding can choose the next observation directly.
+In our setting, we can only choose the next sampling method \(A_t\); the
+observation \(Y_t\) is then generated randomly from the distribution associated
+with that method. In the finite setting, deterministic herding can be viewed as
+a special case in which each arm returns a fixed observation with probability
+one. Our setting therefore adds stochastic outcomes, and in the bandit version
+the arm distributions must also be learned online.
+\paragraph{Sampling costs.}
+The cost problem we consider is different from the sampling-budget and
+computational-cost questions studied in the related work above. \cite{carpentier2012adaptive} fix the total number of samples and optimize how these samples are
+allocated across regions, but samples from different regions do not have
+different costs. Importance-sampling methods may also account for computational
+costs, such as the number of proposal evaluations required by different
+weighting schemes. In our setting, however, each sampling method has its own
+acquisition cost \(\ell_a\), and the goal is to find a low-cost combination of
+methods that can produce the target \(p_G\).
+
+
+
+
+\section{Warm up: one group}
+\label{sec:two-source}
+We first consider the simplest setting of a population defined by a single group. In general, smallest number of sources needed to match a target population $p_G$ is two: one that has a larger proportion of the group and one with a smaller proportion. This warm-up isolates the main feedback mechanism. In Section~\ref{sec:multi}, we extend it to multiple demographic groups and sampling sources, and in Section~\ref{sec:cost} we incorporate  sampling costs.
+
+Fix a single dimension, or group, of the population (e.g., individuals below age 65), and define
 \[
 Y_t =
 \begin{cases}
-1, & \text{if respondent t belongs to the designated group},\\
+1, & \text{if individual $t$ belongs to the group},\\
 0, & \text{otherwise}.
 \end{cases}
 \]
-Let \(p_G\) denote the proportion of this group in the target population. The two available sampling methods are online sampling, denoted by \(O\), and phone sampling, denoted by \(P\). Their corresponding probabilities of sampling a respondent from the designated group are \(p_O\) and \(p_P\). 
-Let \((\mathcal F_t)_{t\geq0}\) denote the history of the sampling process.
-We assume that the action \(A_t\) is chosen using only past information, so
-\(A_t\) is \(\mathcal F_{t-1}\)-measurable, and that conditional on the chosen
-sampling method,
-\[
-Y_t\mid \mathcal F_{t-1},\,A_t=a
-\sim
-\operatorname{Bernoulli}(p_a).
-\]
-Equivalently,
-\[
-\mathbb E[Y_t\mid \mathcal F_{t-1}]
-=
-p_{A_t}.
-\]
-We begin with the qualitative assumption
+Let \(p_G\) denote the proportion of this group in the target population.
+After \(T\) respondents, define the empirical proportion of the designated
+group by
+\begin{equation}
+\label{phat}
+\widehat p_T
+:=
+\frac{1}{T}\sum_{t=1}^T Y_t.
+\end{equation}
+Our goal is to make \(\widehat p_T\) as close as possible to \(p_G\).
+
+Imagine there are two unknown sources: online sampling, denoted by \(O\), and phone sampling, denoted by \(P\). The corresponding probabilities of sampling an individual from the designated group are \(p_O\) and \(p_P\). We make the  following regularity assumption about these groups
 \[
 p_P < p_G < p_O,
 \]
-meaning that online sampling over represents the designated group, whereas phone sampling under represents it. Importantly, the numerical values of \(p_P\) and \(p_O\) need not be known.
+i.e., online sampling over represents the designated group, whereas phone sampling under represents it. Without this assumption an adaptive method is not necessary, we can only get as close to $p_G$ as the closest source. Importantly, the numerical values of \(p_P\) and \(p_O\) need not be known.
 
+Let \((\mathcal F_t)_{t\geq0}\) denote the history of the sampling process. Let \(A_t\) denote the action of choosing a source to sampling from, i.e., $A_t \in \{O,P\}$. This action is chosen using only past information, so
+\(A_t\) is \(\mathcal F_{t-1}\)-measurable. Conditional on the chosen sampling method, we have
+% \[
+% Y_t\mid \mathcal F_{t-1},\,A_t=a
+% \sim
+% \operatorname{Bernoulli}(p_a).
+% \]
+% Equivalently,
+\[
+\mathbb E[Y_t\mid \mathcal F_{t-1}, A_t]
+=
+p_{A_t}.
+\]
 
-Our first algorithm is a sign-based rule. Define the cumulative
-representation error
+Consider the cumulative representation error
 \begin{equation}
-    S_t := \sum_{s=1}^t (Y_s-p_G).
+    S_t := \sum_{i=1}^t (Y_i-p_G).
 \end{equation}
 When \(S_t>0\), the current sample contains too many members of the designated
 group, so the algorithm chooses the sampling method that is less likely to
@@ -183,18 +284,17 @@ likely to recruit members of that group.
         \STATE Set \(A_{t+1}=O\) and sample online.
     \ENDIF
     \STATE Observe \(Y_{t+1}\in\{0,1\}\).
-    \STATE Update
-    \[
-    S_{t+1}=S_t+Y_{t+1}-p_G.
-    \]
+    \STATE Update $S_{t+1}=S_t+Y_{t+1}-p_G$.
 \ENDFOR
 \end{algorithmic}
 \end{algorithm}
 
 The rule requires only the directional knowledge \(p_P<p_G<p_O\): it neither
 estimates the two source distributions nor solves for an optimal sampling
-mixture. Nevertheless, it keeps the cumulative representation error close to zero, as formalized by the following theorem.
-
+mixture. Nevertheless, it keeps the cumulative representation error close to
+zero. Together with Proposition~\ref{prop:one-dimensional-lower-bound}, the theorem below shows that
+the sign-based rule is rate-optimal: no adaptive sampling algorithm can achieve
+a uniformly better order than \(T^{-1}\).
 \begin{theorem}[One-dimensional representation]
 \label{thm:one-dimensional-guarantee}
 Assume that
@@ -246,58 +346,40 @@ Then, for any adaptive sampling algorithm and every \(T\geq1\),
 \right)
 \geq q.
 \]
-Consequently,
-\[
-\mathbb E\left[
-\left|\widehat p_T-p_G\right|
-\right]
-\geq
-\frac{q}{2T}.
-\]
-In particular, no adaptive sampling algorithm can improve the
+In particular, no adaptive algorithm can improve the
 \(T^{-1}\) rate uniformly over this class of problems.
 \end{proposition}
-\section{Comparison with Alternative Methods}
-\paragraph{Cheap \& discard.} A natural alternative is to use a single cheap sampling method and then discard respondents from groups that become overrepresented. This can correct the composition of the retained sample, but it may require throwing away a large number of observations. Since every collected response has a cost, this can be expensive even when the cheapest sampling method is used. We next give a simple phone--online example showing that an adaptive mixture of sampling methods can achieve the desired representation at lower cost than collecting a biased sample and correcting it through rejection.
+
+\subsection{Alternative methods}
+
+\paragraph{Cheap \& discard.} A natural alternative, commonly used in survey and political polling through quota sampling, is to use a single cheap sampling method and then discard respondents from groups that become overrepresented. This can correct the composition of the retained sample, but it may require throwing away a large number of observations. Since every collected response has a cost, this can be expensive even when the cheapest sampling method is used. We next give a simple phone--online example showing that an adaptive mixture of sampling methods can achieve the desired representation at lower cost than collecting a biased sample and correcting it through rejection.
 
 \begin{example}
-Consider two sampling methods. Online sampling has
-\[
-p_O=0.8,
-\qquad
-\ell_O=\$1,
-\]
-while phone sampling has
-\[
-p_P=0.2,
-\qquad
-\ell_P=\$3.
-\]
-Let the target proportion be
-\[
-p_G=0.4.
-\]
-
-Suppose we want a final sample of \(1000\) respondents. If the pollster uses
-only the cheaper online method and then discards overrepresented respondents,
-about \(3000\) online responses must be collected, for a total cost of
-approximately
-\[
-\$3000.
-\]
-
+Consider two sampling methods. Online sampling has $p_O=0.8,\ell_O=\$1$, while phone sampling has $p_P=0.2,\ell_P=\$3$. Let the target proportion be $p_G=0.4$. 
+Suppose we want a final sample of \(1000\) respondents. To obtain a sample of $1000$ respondents with \(p_G=0.4\),
+we need $400$ respondents from the designated group and $600$ from the
+non-designated group. 
+If we use only online recruitment, then \(p_O=0.8\), so only $20$\%
+of online respondents are non-designated. Therefore, to obtain the
+required $600$ non-designated respondents, we need $600/0.2=3000$ online respondents on average. Among these, about $2400$ are designated
+and $600$ are non-designated. We retain $400$ of the designated respondents
+and all $600$ non-designated respondents, discarding the remaining $2000$.
+At \$$1$ per online respondent, the expected cost is therefore \$$3000$. 
 By contrast, our adaptive method uses approximately \(333\) online respondents
-and \(667\) phone respondents. The resulting expected cost is approximately
-\[
-\$2333.
-\]
-
-Thus, although phone sampling has a larger per-sample cost, using an
+and \(667\) phone respondents. The resulting expected cost is approximately \$$2333$. Thus, although phone sampling has a larger per-sample cost, using an
 appropriate mixture of the two methods is cheaper than collecting only from
 the cheapest method and correcting the sample through rejection.
 \end{example}
 
-\paragraph{Post-hoc reweighting.} Another common approach is to keep the biased sample and assign larger weights to underrepresented groups. This can correct the composition numerically, but large weights can substantially increase variance, making the final estimates less reliable for decision-making.
+\paragraph{Post-hoc reweighting.}
+Another common approach is to keep the biased sample and assign larger
+weights to underrepresented groups. This can be effective when the goal is
+to estimate population quantities, but it is different from our goal as it does not change the composition
+of the recruited sample itself. This distinction is important in settings
+such as clinical trials, where having participants from the target groups
+in the study is itself part of the objective. 
+% Uneven weights may also
+% increase the variance of downstream estimates.
 
 \subsection{Significance of the Sign-Based Algorithm}
 
@@ -309,29 +391,19 @@ After dividing by \(T\), this leads naturally to an accuracy of order
 \(T^{-1/2}\).
 
 Algorithm~\ref{alg:sign-based} achieves something much stronger.
-Theorem~\ref{thm:one-dimensional-guarantee} shows that
-\[
-S_T=O_{\mathbb P}(1),
-\]
-and therefore
-\[
-\widehat p_T-p_G=O_{\mathbb P}(T^{-1}).
-\]
-The difference is substantial: ignoring constants, \(0.01\) accuracy requires
-on the order of \(10^4\) samples at the usual \(T^{-1/2}\) rate, but only on
-the order of \(10^2\) samples at the \(T^{-1}\) rate.
-
-The following decomposition explains why this is surprising.
+Theorem~\ref{thm:one-dimensional-guarantee} shows that $S_T=O_{\mathbb P}(1)$, 
+and therefore $\widehat p_T-p_G=O_{\mathbb P}(T^{-1})$. 
+% The difference is substantial: ignoring constants, \(0.01\) accuracy requires
+% on the order of \(10^4\) samples at the usual \(T^{-1/2}\) rate, but only on
+% the order of \(10^2\) samples at the \(T^{-1}\) rate.
+The following decomposition lemma explains why this is surprising.
 
 \begin{lemma}[Decomposition identity]
 \label{lem:representation-decomposition}
-Let \(\widehat p_T\) be defined as in \eqref{phat}, and let
-\[
-y_T:=\frac{N_O(T)}{T}
-\]
+Let \(\widehat p_T\) be defined as in \eqref{phat}, and let $y_T:=N_O(T)/T$ 
 denote the fraction of respondents collected through online sampling. Then
-\begin{equation}
-\label{decomp. lemm.}
+\begin{equation*}
+% \label{decomp. lemm.}
 \widehat p_T-p_G
 =
 \underbrace{
@@ -341,8 +413,8 @@ denote the fraction of respondents collected through online sampling. Then
 \underbrace{
 \frac{1}{T}\sum_{t=1}^T
 \bigl(Y_t-p_{A_t}\bigr)
-}_{\text{sampling error}}.
-\end{equation}where
+}_{\text{sampling error}}
+\end{equation*}where
 \[
 x^\star
 :=
@@ -354,123 +426,62 @@ x^\star p_O+(1-x^\star)p_P=p_G.
 \]
 \end{lemma}
 
-The second term in \eqref{decomp. lemm.} is ordinary sampling noise. The
+The second term in the decomposition of $\widehat p_T-p_G$ is ordinary sampling noise. The
 martingale central limit theorem shows that this noise itself still fluctuates
-on the \(\sqrt T\) scale. Algorithm~\ref{alg:sign-based} does not remove this
-noise; instead, its allocation decisions cancel it, leaving only a bounded
+on the \(\sqrt T\) scale, see Appendix~\ref{app:martingale-clt} for a proof of this. The allocation decisions of Algorithm~\ref{alg:sign-based} cancel it, leaving only a bounded
 remainder. This is what allows the final representation error to improve from
-the usual \(T^{-1/2}\) scale to \(T^{-1}\).
+the usual \(T^{-1/2}\) rate to \(T^{-1}\).
 
 \paragraph{Explore first, then fix the allocation.}
 Another natural strategy is to first estimate \(p_O\) and \(p_P\), compute the
 corresponding oracle allocation \(x^\star\), and then sample according to this
 fixed proportion. This can make the allocation error small, but the sampling
 error in Lemma~\ref{lem:representation-decomposition} still fluctuates on the
-order of \(\sqrt{T}\). The resulting representation error therefore remains
+order of \(\sqrt{T}\), due to the martingale central limit theorem (more details in Appendix~\ref{app:martingale-clt}). The resulting representation error therefore remains
 of order \(T^{-1/2}\). Algorithm~\ref{alg:sign-based} instead continues to
 react to the realized sample, which is what allows it to achieve the
 \(T^{-1}\) rate.
-\section{Related Work}
 
-\paragraph{Adaptive stratified Monte Carlo.}
-A related line of work studies how to estimate an integral accurately when only
-a limited number of function evaluations are available. The domain is divided
-into smaller regions, called \emph{strata}. If the variance of the function is
-larger in one region, more samples are needed there to estimate its contribution
-accurately. Since these variances are generally unknown, Carpentier and Munos
-\cite{carpentier2011finite} treat the strata as arms in a multi-armed bandit
-problem and use an upper-confidence strategy to learn which regions have larger
-variance and should receive more samples. This line of work was later extended
-to settings in which the allocation and the partition itself are adapted
-\cite{carpentier2012adaptive,carpentier2013toward,carpentier2015adaptive}.
 
-Our objective is different. These methods adapt the sampling allocation to
-reduce the uncertainty in estimating an unknown integral. In our setting, the
-target \(p_G\) is already known. After every observation, we can measure the
-realized deviation of the current sample from this target and choose the next
-sampling method to correct that deviation. Thus, even if all arm distributions
-were known, our feedback rule would still remain adaptive.
 
-\paragraph{Post-hoc reweighting and importance sampling.}
-A second related approach is to collect observations from distributions that do
-not match the desired target and correct the mismatch afterward by assigning
-different weights to the observations. This is the idea behind importance
-sampling. When several sampling distributions are available, multiple
-importance sampling combines observations from these different sources with
-suitable weights \cite{elvira2019generalized}. There is also a large literature
-in which the sampling distributions themselves are adapted over time
-\cite{bugallo2017adaptive,elvira2021advances,lu2023daisee}.
-
-This is closely related to the post-hoc reweighting approach discussed earlier
-in our paper. Our method instead tries to correct the imbalance during data
-collection. If some part of the target becomes overrepresented, the algorithm
-changes the sampling method so that future observations are more likely to come
-from underrepresented parts. The goal is therefore to make the unweighted
-empirical sample itself representative, rather than correcting the sample
-afterward through weights.
-\paragraph{Online balancing and covariate-adaptive randomization.}
-Another related line of work uses feedback to keep a cumulative imbalance
-small. In online vector balancing, a random vector first arrives and the
-algorithm then chooses a sign \(+1\) or \(-1\) for that vector in order to
-keep the signed sum small
-\cite{bansal2020online,bansal2021discrepancy}. A similar idea appears in
-clinical trials. Pocock and Simon \cite{pocock1975sequential} observe the
-characteristics of each new patient and then favor the treatment assignment
-that reduces imbalance in these characteristics across treatment groups. In
-both cases, however, the random observation is seen before the balancing
-decision is made. In our setting, the order is reversed: we first choose a
-sampling method \(A_t\), and only then observe the random outcome \(Y_t\)
-generated by that method.
-\paragraph{Herding.}
-The closest connection to our representation objective is herding. Herding
-starts from a known target and sequentially chooses observations so that their
-empirical moments approach the target moments \cite{welling2009herding}. Kernel
-herding extends this idea to continuous spaces and can achieve an
-\(O(T^{-1})\) error for suitable classes of functions, compared with the usual
-\(O(T^{-1/2})\) scale of independent random sampling
-\cite{chen2010supersamples}. Herding has also been connected to
-conditional-gradient optimization for minimizing moment discrepancy
-\cite{bach2012equivalence}.
-
-The main difference is that herding can choose the next observation directly.
-In our setting, we can only choose the next sampling method \(A_t\); the
-observation \(Y_t\) is then generated randomly from the distribution associated
-with that method. In the finite setting, deterministic herding can be viewed as
-a special case in which each arm returns a fixed observation with probability
-one. Our setting therefore adds stochastic outcomes, and in the bandit version
-the arm distributions must also be learned online.
-\paragraph{Sampling costs.}
-The cost problem we consider is different from the sampling-budget and
-computational-cost questions studied in the related work above. Carpentier and
-Munos fix the total number of samples and optimize how these samples are
-allocated across regions, but samples from different regions do not have
-different costs. Importance-sampling methods may also account for computational
-costs, such as the number of proposal evaluations required by different
-weighting schemes. In our setting, however, each sampling method has its own
-acquisition cost \(\ell_a\), and the goal is to find a low-cost combination of
-methods that can produce the target \(p_G\).
-\section{Multi dimensional version and MAB}
+\section{Multiple groups}
 \label{sec:multi}
-We now extend the feedback mechanism to multiple demographic groups and
-multiple sampling methods. Suppose there are \(K\) demographic characteristics
-and \(m\) available sampling methods. Each respondent is represented by
+We now extend the feedback mechanism to multiple groups and
+multiple sampling sources. Suppose there are \(K\) groups
+and \(m\) available sampling sources. Each respondent is represented by
 \[
 Y_t\in\{0,1\}^K,
 \qquad
 \|Y_t\|_0\le \ell_0,
 \]
-and the target population distribution is \(p_G\in\mathbb R^K\). Sampling
-method \(a\) has an unknown mean vector \(\mu_a\), with
+where \(\|Y_t\|_0\) counts the number of nonzero coordinates. This is a
+natural assumption for demographic data, since each respondent belongs
+to only a limited number of groups, such as one racial group and one
+age group. The target population distribution is \(p_G\in\mathbb R^K\). Source \(a\) has an unknown mean vector \(\mu_a\), with
 \[
 \mathbb E[Y_t\mid\mathcal F_{t-1},A_t=a]=\mu_a.
 \]
-We assume that \(p_G\) lies in the interior of the convex hull of the arm means.
+We assume that \(p_G\) lies in the interior of the convex hull of the
+source means. This is the multidimensional analogue of
+\(p_P<p_G<p_O\). If \(p_G\) lies outside this convex hull, no mixture of
+the available sources can produce the target distribution, so no sampling
+algorithm can make the representation error converge to zero. The
+interiority assumption further ensures that, whenever the sample deviates
+from the target, there is a source whose expected contribution can
+correct that deviation. 
+
+For example, in our NHIS experiment we take \(K=3\), corresponding to
+Hispanic, non-Hispanic Black, and other adults with diagnosed diabetes.
+Each sampling source is a recruitment channel, such as online recruitment,
+landline outreach, Medicaid, or regional clinics. A recruited individual is
+represented by one of the three standard basis vectors, and \(p_G\) is the
+corresponding ethnic composition of the target population.
 
 Define the cumulative representation deficit by
 \[
 S_t:=\sum_{s=1}^t(Y_s-p_G).
 \]
-If the arm means were known, the natural feedback rule would choose the arm
+If the source means were known, the natural feedback rule would choose the source
 whose expected contribution points most strongly against the current deficit:
 \[
 A_{t+1}
@@ -478,33 +489,67 @@ A_{t+1}
 \operatorname*{arg\,min}_{a\in[m]}
 \left\langle S_t,\mu_a-p_G\right\rangle.
 \]
-Since the arm means are unknown, the problem has a natural multi-armed bandit structure. Unlike the classical MAB setting, however, there is no single best arm to identify. The arm that is most useful changes with the current representation deficit \(S_t\): an arm may be optimal in one direction and suboptimal in another. We therefore use a UCB-type rule that learns the arm means online while adaptively choosing the arm that appears most effective at correcting the current deficit, with an exploration bonus for arms that remain uncertain.
+Since the source means are unknown, the problem has a natural
+multi-armed bandit structure. Unlike classical multi-armed bandits,
+however, there is no single best source: the source that is most
+useful depends on the current representation deficit.
+
+We therefore use a UCB-type rule. Fix a confidence level
+\(\delta\in(0,1)\). For each source \(a\), let
+\[
+N_a(t):=\sum_{s=1}^t \mathbf 1\{A_s=a\}
+\]
+denote the number of times source \(a\) has been sampled by time \(t\).
+For \(n\ge1\), let \(\widehat\mu_{a,n}\) denote the empirical mean of the
+first \(n\) observations collected from source \(a\). 
+We assign source \(a\), after \(n\) observations, the confidence radius
+\[
+r_a(n)
+:=
+\sqrt{
+\frac{K}{2n}
+\log\left(
+\frac{\pi^2 m K n^2}{3\delta}
+\right)
+},
+\qquad n\ge1,
+\]
+and set \(r_a(0)=+\infty\). 
+With probability at least \(1-\delta\), these confidence bounds hold
+simultaneously for every source and every sample size; see the proof of
+Theorem~\ref{thm:multidimensional-guarantee} for details.
+
+Sources that have been sampled fewer times have larger confidence radii.
+The algorithm subtracts this radius from the estimated directional
+correction and chooses the source with the smallest resulting index. This
+encourages exploration of poorly understood sources while continuing to
+correct the current representation error.
+
+We introduce a parameter \(\beta\) to control the strength of this
+exploration bonus. Our theoretical guarantee uses \(\beta=1\), we examine smaller values empirically.
+
 \begin{algorithm}[t]
-\caption{UCB-Based Adaptive Sampling}
+\caption{Multi-Source Adaptive Sampling}
 \label{alg:ucb-sampling}
 \begin{algorithmic}[1]
-\STATE Initialize \(S_0=0\) and \(N_a(0)=0\) for every arm \(a\).
+\STATE Fix $\delta, \eta$, let \(S_0=0, N_a(0)=0\) for every source \(a\).
 \FOR{\(t=0,1,\ldots,T-1\)}
 
     \IF{\(S_t=0\)}
         \STATE Choose \(A_{t+1}\) according to any fixed rule.
     \ELSE
-        \STATE Set
-        \[
-            u_t=\frac{S_t}{\|S_t\|}.
-        \]
-        \STATE For every arm with \(N_a(t)\ge1\), define
+        \STATE Set $u_t= S_t/\|S_t\|$.
+        \STATE For every source with \(N_a(t)\ge1\), define
         \[
             I_a(t)
-            =
-            \left\langle
-                u_t,
-                \widehat\mu_{a,N_a(t)}-p_G
-            \right\rangle
-            -
-            r_a\!\left(N_a(t)\right).
-        \]
-        For an unsampled arm, set \(I_a(t)=-\infty\).
+                =
+                \left\langle
+                u_t,\widehat\mu_{a,N_a(t)}-p_G
+                \right\rangle
+                -
+                \beta\,r_a\!\left(N_a(t)\right).
+                        \]
+        For an unsampled source, set \(I_a(t)=-\infty\).
         \STATE Choose
         \[
             A_{t+1}
@@ -513,15 +558,10 @@ Since the arm means are unknown, the problem has a natural multi-armed bandit st
         \]
     \ENDIF
 
-    \STATE Sample from arm \(A_{t+1}\) and observe
+    \STATE Sample from \(A_{t+1}\), observe
     \(Y_{t+1}\in\{0,1\}^K\).
 
-    \STATE Update
-    \[
-        S_{t+1}
-        =
-        S_t+Y_{t+1}-p_G.
-    \]
+    \STATE Update $S_{t+1} = S_t+Y_{t+1}-p_G$.
 
     \STATE Update \(N_{A_{t+1}}(t+1)\) and the empirical mean
     \(\widehat\mu_{A_{t+1},N_{A_{t+1}}(t+1)}\).
@@ -533,13 +573,10 @@ Since the arm means are unknown, the problem has a natural multi-armed bandit st
 \begin{theorem}[Multidimensional representation]
 \label{thm:multidimensional-guarantee}
 Assume that every observation \(Y_t\in\{0,1\}^K\) satisfies
-\[
-    \|Y_t\|_0\le \ell_0,
-\]
-and suppose that \(p_G\) lies in the interior of the convex hull of the arm
-means with margin \(c>0\). Let Algorithm~2 generate the sequence of
-respondents.
-
+\(\|Y_t\|_0\le \ell_0\), and suppose \(p_G\) lies in the
+interior of the convex hull of the source means with margin \(c>0\).  
+Let Algorithm~\ref{alg:ucb-sampling} with \(\beta=1\) and the confidence
+radius defined above generate the sequence of respondents. 
 Then there exist finite constants \(C_0,C_1\), independent of \(T\), such
 that for every \(T\ge1\) and every \(\eta\in(0,1)\), with probability at
 least \(1-\delta-\eta\),
@@ -548,13 +585,13 @@ least \(1-\delta-\eta\),
     \le
     \frac{C_0+C_1\log(1/\eta)}{T}.
 \]
-In particular,
-\[
-    \left\|\widehat p_T-p_G\right\|
-    =
-    O(T^{-1})
-\]
-with high probability.
+% In particular,
+% \[
+%     \left\|\widehat p_T-p_G\right\|
+%     =
+%     O(T^{-1})
+% \]
+% with high probability.
 \end{theorem}
 
 
@@ -591,9 +628,21 @@ The proof gives
         \frac{\ell_0+1}{c^2}
     \right).
 \]
-In particular, all constants depend only on the fixed problem parameters and
-the confidence level, and are independent of the horizon \(T\).
+%In particular, all constants depend only on the fixed problem parameters and
+%the confidence level, and are independent of the horizon \(T\).
 \end{remark}
+
+% \begin{remark}[Finite-sample constants]
+% \label{rem:rate}
+% The confidence radius in Theorem~\ref{thm:multidimensional-guarantee} is chosen
+% for a uniform high-probability guarantee and is therefore quite conservative.
+% In practice, the algorithm can often identify a correcting source long before the
+% proof requires \(r_a(n)\le c/4\). In our main experiment, the theorem gives a
+% bound of order \(2\times 10^6\) on \(\|S_T\|\) at \(T=10^5\), while the observed
+% value is about \(2.5\). We therefore view the theorem mainly as a rate result,
+% with the experiments providing a more realistic picture of the constants.
+% \end{remark}
+
 \begin{proposition}[Optimality of the \(T^{-1}\) rate]
 \label{prop:multidimensional-guarantee}
 
@@ -616,24 +665,25 @@ Consequently,
 Thus the \(T^{-1}\) dependence in Theorem~\ref{thm:multidimensional-guarantee} cannot be improved
 uniformly over the class of admissible instances.
 \end{proposition}
-\section{The Cost Theorem}
+
+\section{Accounting for Costs}
 \label{sec:cost}
 In practice, different polling or data-collection methods have different
 costs, so a natural question is how to assemble a representative sample as
 cheaply as possible. We assign each sampling method \(a\) a cost \(\ell_a\).
 
 A natural cost-aware modification of the adaptive rule is to choose at each
-round the arm giving the largest expected correction per unit cost, namely
+round the source giving the largest expected correction per unit cost, namely
 \[
 A_{t+1}
 \in
 \operatorname*{arg\,min}_{a\in[m]}
 \frac{\langle S_t,\mu_a-p_G\rangle}{\ell_a}.
 \]
-This rule only asks which arm looks cheapest for correcting the error
+This rule only asks which source looks cheapest for correcting the error
 \emph{right now}. But our real goal is different: we want the entire final
 sample to have the right composition at the smallest possible total cost.
-A choice that looks cheap at one round may force us to use expensive arms
+A choice that looks cheap at one round may force us to use expensive sources
 later. Our algorithm therefore first asks which combination of sampling
 methods can produce \(p_G\) at the lowest average cost, and then runs the
 adaptive sampling rule using that combination. The following example shows
@@ -641,95 +691,195 @@ that the difference can be large.
 
 \begin{example}[The myopic rule can overpay]
 \label{ex:myopic}
-Let \(K=2\), \(p_G=0.5\), and three sources: \(A\) (\(p_A=0.4\),
-\(\ell_A=1\)), \(B\) (\(p_B=0.9\), \(\ell_B=1\)) and \(C\) (\(p_C=0\),
-\(\ell_C=4\)). For \(S_t>0\) the myopic rule prefers \(C\) to
-\(A\), as \((p_C-p_G)/\ell_C=-0.125<-0.1=(p_A-p_G)/\ell_A\); for
-\(S_t<0\) it picks \(B\). With the tie rule of
-Algorithm~\ref{alg:sign-based} it is Algorithm~\ref{alg:sign-based} on
-\(\{C,B\}\), so by Theorem~\ref{thm:one-dimensional-guarantee} and
-Lemma~\ref{lem:representation-decomposition} it samples \(B\) a long-run
-fraction \(5/9\) of the time and pays \(21/9\approx2.33\) per recruit. The support
-\(\{A,B\}\) has margin \(\sqrt2\cdot0.1\approx0.14\) and \(C(\{A,B\})=1\).
-For \(c_0\le0.14\) it is the cheapest admissible support, and sampling
-adaptively from it costs \(1\) per recruit. \(C\) corrects fastest per unit
-cost, but speed is worthless when every recruit counts towards the sample.
+Let \(K=2\), \(p_G=0.5\), and consider three sources:
+\(A\) with \(p_A=0.4\) and \(\ell_A=1\),
+\(B\) with \(p_B=0.9\) and \(\ell_B=1\), and
+\(C\) with \(p_C=0.1\) and \(\ell_C=3\). 
+For \(S_t>0\), the myopic rule prefers \(C\) to \(A\), since
+\[
+\frac{p_C-p_G}{\ell_C}
+=
+\frac{-0.4}{3}
+<
+-0.1
+=
+\frac{p_A-p_G}{\ell_A}.
+\]
+For \(S_t<0\), it chooses \(B\). Thus, the myopic rule samples only
+from \(B\) and \(C\). 
+To obtain \(p_G=0.5\) from these two sources, they must be sampled in
+equal proportions, since $(1/2)(0.9)+ (1/2)(0.1)=0.5$. The resulting average cost is therefore $2$ per recruit. In contrast, the pair \(\{A,B\}\) can also produce \(p_G=0.5\).
+Since both sources cost \(1\), any mixture of them costs exactly \(1\)
+per recruit. Thus the myopic rule pays twice as much, even though at
+each round it chooses the source giving the largest correction per unit
+cost.
 \end{example}
-
-
-\subsection{Description of the Algorithm and Theorems}
+\subsection{The Algorithm}
 
 For the cost results below, we restrict to the categorical setting
 \[
 Y_t\in\{e_1,\ldots,e_K\}.
 \]
-Thus the arm means lie in the probability-simplex hyperplane, and the
-relative-interiority margin is taken within this hyperplane.
+This restriction is mainly notational. If respondents are described by
+several binary attributes, we can instead treat each possible combination of
+attributes as a separate category. For example, Black \(<65\), Black \(65+\),
+non-Black \(<65\), and non-Black \(65+\) can be treated as four categories,
+so that every respondent belongs to exactly one category.
 
-For every \(K\)-arm set \(I\), let \(c(I)\) denote the
+Thus the source means and \(p_G\) lie in the probability simplex, and the
+relative-interiority margin is taken within its affine hull.
+Our cost-aware procedure has two stages: we first select a low-cost
+collection of sources, and then run Algorithm~\ref{alg:ucb-sampling}
+restricted to the selected sources. 
+We restrict the selected support to contain exactly \(K\) sources.
+With more than \(K\) sources, there may be several different mixtures
+of the selected sources whose mean is \(p_G\).
+Algorithm~\ref{alg:ucb-sampling} controls representation error but does
+not optimize over these different feasible mixtures, and could therefore
+converge to an allocation whose cost is larger than the minimum-cost
+representation of \(p_G\) on that support.
+
+With \(K\) sources and positive margin, the representation of \(p_G\)
+is unique. Thus, once the support is selected, the target allocation
+and its cost are uniquely determined. 
+For every \(K\)-source set \(I\), let \(c(I)\) denote the
 relative-interiority margin of \(p_G\) in
 \(\operatorname{conv}\{\mu_a:a\in I\}\), namely, the radius of the largest
-Euclidean ball centered at \(p_G\) and contained in this convex hull.
+Euclidean ball centered at \(p_G\), taken within the affine hull of the
+probability simplex, that is contained in this convex hull.
 
-Whenever \(c(I)>0\), the \(K\) arms in \(I\) are affinely independent, so
-there is a unique \(q(I)\in\Delta_K\) such that
+Whenever \(c(I)>0\), let \(q(I)\in\Delta_K\) denote the unique mixture
+satisfying
 \[
 p_G=\sum_{a\in I}q_a(I)\mu_a.
 \]
 Define
 \[
-C(I):=\sum_{a\in I}\ell_a q_a(I).
+B(I):=\sum_{a\in I}\ell_a q_a(I).
 \]
 \paragraph{Choosing the margin \(c_0\).}
-The parameter \(c_0\) determines how far inside the convex hull the target
-must lie for a support to be considered admissible. A larger \(c_0\) makes
-the problem statistically easier, since the required exploration scales as
-\(c_0^{-2}\), but it may exclude many potentially cheap supports.
+Algorithm~\ref{alg:cost-support} contains a parameter \(c_0\) that determines
+how far inside the convex hull the target must lie for a support to be
+considered admissible. A larger \(c_0\) makes the problem statistically
+easier, since the required exploration scales as \(c_0^{-2}\), but it may
+exclude potentially cheaper supports. Conversely, decreasing \(c_0\) allows
+the algorithm to consider a larger collection of supports, some of which may
+have lower cost, but requires substantially more exploration and leads to
+larger finite-sample constants. Thus \(c_0\) controls a tradeoff between
+statistical robustness and the ability to search for cheaper sampling
+strategies.
 
-For example, ignoring the factors involving \(K\), \(m\), and the confidence
-level, \(c_0=0.1\) corresponds to an exploration scale of about \(100\)
-samples per arm, whereas \(c_0=0.01\) corresponds to about \(10{,}000\).
-The smaller margin admits a larger collection of supports and may therefore
-lead to a cheaper sampling mixture, but at the cost of substantially more
-exploration and a larger representation-error constant. Thus, a practitioner can choose \(c_0\) according to the available sampling
-budget. A large \(c_0\) gives a smaller and more robust search space with much
-less exploration, while a small \(c_0\) allows the algorithm to search among
-more, and potentially cheaper, collections of sampling methods, at the cost
-of substantially more data collection.
+For an empirically admissible support \(I\), define
+\[
+\widehat B(I)
+:=
+\min_{q\in\Delta_K}
+\left\{
+\sum_{a\in I}\ell_a q_a:
+\sum_{a\in I}q_a\widehat\mu_a=p_G
+\right\},
+\]
+where \(\Delta_K\) is the \(K\)-dimensional probability simplex.
 \begin{algorithm}[t]
 \caption{Minimum-Cost Support Selection}
 \label{alg:cost-support}
 \begin{algorithmic}[1]
-\STATE Sample each arm \(a\in[m]\) exactly \(n\) times and compute its
+
+\STATE Fix a margin $c_0$, let $\widehat I^\dagger=\varnothing, \widehat B^\dagger=+\infty$.
+
+\STATE Sample each source \(a\in[m]\) exactly \(n\) times and compute its
 empirical mean \(\widehat\mu_a\).
 
-\FOR{each \(K\)-arm set \(I\subseteq[m]\)}
+\FOR{each \(K\)-source set \(I\subseteq[m]\)}
+
     \STATE Compute the empirical interior margin \(\widehat c(I)\).
+
     \IF{\(p_G\in\operatorname{conv}\{\widehat\mu_a:a\in I\}\) and
     \(\widehat c(I)\ge 3c_0/4\)}
-        \STATE Compute \(\widehat C(I):=\min_q\{\sum_{a\in I}\ell_aq_a:\ q\ge0,\
-        \sum_{a\in I}q_a=1,\ \sum_{a\in I}q_a\widehat\mu_a=p_G\}\).
+
+        \STATE Compute $\widehat B(I)$.
+
+        \IF{$\widehat B(I)<\widehat B^\dagger$}
+            \STATE $\widehat B^\dagger=\widehat B(I)$,
+            $\widehat I^\dagger=I$.
+        \ENDIF
+
     \ENDIF
+
 \ENDFOR
 
-\STATE If no \(K\)-arm set passed the test, return \(\widehat I=[m]\)
-(fallback: all arms); otherwise return
-\(\widehat I\in\arg\min\widehat C(I)\) over the sets that passed.
+\IF{\(\widehat I^\dagger=\varnothing\)}
+    \STATE Return \textsc{Fail}.
+\ELSE
+    \STATE Return \((\widehat I^\dagger,\widehat B^\dagger)\).
+\ENDIF
+
 \end{algorithmic}
 \end{algorithm}
 
+% \begin{algorithm}[t]
+% \caption{Minimum-Cost Support Selection}
+% \label{alg:cost-support}
+% \begin{algorithmic}[1]
+% \STATE Initialize $\widehat I^\dagger=\varnothing$ and
+% $\widehat B^\dagger=+\infty$.
+% \STATE Sample each source \(a\in[m]\) exactly \(n\) times and compute its
+% empirical mean \(\widehat\mu_a\).
+
+% \FOR{each \(K\)-source set \(I\subseteq[m]\)}
+%     \STATE Compute the empirical interior margin \(\widehat c(I)\).
+%     % \IF{\(\widehat c(I)\ge 3c_0/4\)}
+%     %     \STATE Compute
+%     %     \[
+%     %     \widehat B(I)
+%     %     :=
+%     %     \min_{q}
+%     %     \sum_{a\in I}\ell_a q_a
+%     %     \]
+%     %     subject to
+%     %     \[
+%     %     q_a\ge 0,\qquad
+%     %     \sum_{a\in I}q_a=1,
+%     %     \qquad
+%     %     \sum_{a\in I}q_a\widehat\mu_a=p_G.
+%     %     \]
+%     \IF{\(p_G\in\operatorname{conv}\{\widehat\mu_a:a\in I\}\) and
+%     \(\widehat c(I)\ge 3c_0/4\)}
+%         \STATE Compute \(\widehat B := \min_q\{\sum_{a\in I}\ell_aq_a:\ q\ge0,\
+%         \sum_{a\in I}q_a=1,\ \sum_{a\in I}q_a\widehat\mu_a=p_G\}\).
+%         \IF{$\widehat B < \widehat B^\dagger$}
+%             \STATE $\widehat B^\dagger = \widehat B$, $\widehat I^\dagger = I$
+%         \ENDIF
+%     \ENDIF
+% \ENDFOR
+
+% \IF{$\widehat I^\dagger=\varnothing$}
+%     \STATE Return \textsc{Fail}.
+% \ELSE
+%     \STATE Return $(\widehat I^\dagger,\widehat B^\dagger)$.
+% \ENDIF
+% % \STATE Select $\widehat I \in \operatorname*{arg\,min}_{I \mid \widehat B(I) \in \mathcal{C}} \widehat B(I)$
+% % \[
+% % \widehat I
+% % \in
+% % \operatorname*{arg\,min}_{\substack{|I|=K\\
+% % \widehat c(I)\ge 3c_0/4}}
+% % \widehat B(I).
+% % \]
+
+% \STATE Return $(\widehat I^\dagger, \widehat B^\dagger)$.
+% \end{algorithmic}
+% \end{algorithm}
+
 \begin{theorem}[Guarantee for minimum-cost]
 \label{thm:cost-support}
-Assume that there exists at least one \(K\)-arm support \(I\subseteq[m]\)
-with
-\[
-c(I)\geq c_0.
-\]
+Assume that there exists at least one \(K\)-source support \(I\subseteq[m]\)
+with $c(I)\geq c_0$. 
 Let
 \[
 \ell_{\max}:=\max_{a\in[m]}\ell_a.
 \]
-Suppose each arm is sampled \(n\) times in
+Suppose each source is sampled \(n\) times in
 Algorithm~\ref{alg:cost-support}, where
 \[
 n
@@ -739,16 +889,13 @@ n
 \]
 
 Then, with probability at least \(1-\delta\), the support
-\(\widehat I\) returned by Algorithm~\ref{alg:cost-support} satisfies
-\[
-c(\widehat I)\geq \frac{c_0}{2},
-\]
+\(\widehat I\) returned by Algorithm~\ref{alg:cost-support} satisfies $c(\widehat I)\geq \frac{c_0}{2}$, 
 and
 \[
-C(\widehat I)
+B(\widehat I)
 \leq
 \min_{\substack{|I|=K\\ c(I)\geq c_0}}
-C(I)
+B(I)
 +
 \frac{3\ell_{\max}}{c_0}
 \sqrt{
@@ -759,47 +906,41 @@ C(I)
 \end{theorem}
 The benchmark in Theorem~\ref{thm:cost-support} is the cheapest support
 with margin at least \(c_0\), not the cheapest feasible mixture, which may
-have a smaller margin and be harder to identify. On the event of the
-theorem every support with \(c(I)\ge c_0\) passes the test, so the fallback
-(Algorithm~\ref{alg:ucb-sampling} on all arms) is used only when \(n\) is
-too small or no such support exists.
+have a smaller margin and be harder to identify. 
 The \(mn\) observations collected during the exploration phase are retained
 and included in the final sample. Since this exploration phase has fixed
 length, its contribution to the final representation error and average cost
 is of order \(mn/T\).
-\begin{theorem}[Cost-aware multidimensional sampling]
+\begin{theorem}[Cost-aware  sampling]
 \label{thm:cost-aware}
 Suppose there are \(m\) sampling methods and that there exists at least one
-\(K\)-arm support \(I\) such that
-\[
-c(I)\ge c_0>0.
-\]
-
-Sample each arm \(n\) times, with
+\(K\)-source support \(I\) such that $c(I)\ge c_0>0$. Sample each source \(n\) times, with
 \[
 n\ge
 \frac{8K}{c_0^2}
 \log\frac{2mK}{\delta},
 \]
 use Algorithm~\ref{alg:cost-support} to select \(\widehat I\), and then run
-the multidimensional sampling algorithm restricted to the arms in
-\(\widehat I\).
-
+the multi-source sampling algorithm restricted to the sources 
+\(\widehat I\). 
 Then, with high probability,
 \[
 \left\|\widehat p_T-p_G\right\|
 =
-\widetilde O_{m,K}
-\left(
-\frac{1}{c_0^2T}
-\right),
+O\!\left(
+\frac{K^2}{c_0^2T}
+\log\frac{K}{\delta c_0}
++
+\frac{1}{c_0T}
+\log\frac{1}{\eta c_0}
+\right).
 \]
 and
 \[
-C(\widehat I)
+B(\widehat I)
 \le
 \min_{\substack{|I|=K\\ c(I)\ge c_0}}
-C(I)
+B(I)
 +
 \frac{3\ell_{\max}}{c_0}
 \sqrt{
@@ -807,9 +948,31 @@ C(I)
 \log\frac{2mK}{\delta}
 }.
 \]
+Moreover, if
+\[
+\overline B_T
+:=
+\frac{1}{T}\sum_{t=1}^T \ell_{A_t}
+\]
+denotes the realized average cost, which includes both the initial exploration
+cost and the finite-sample error from the realized source proportions differing
+from their target proportions, then
+\[
+\overline B_T
+\le
+B(\widehat I)
++
+\frac{mn\ell_{\max}}{T}
++
+O_{\mathbb P}\!\left(
+\frac{\ell_{\max}}{c_0}
+\sqrt{\frac{K}{T}}
+\right).
+\]
 \end{theorem}
 \begin{remark}
-The cost error in Theorem~\ref{thm:cost-aware} decreases as \(n^{-1/2}\).
+The support-selection error in Theorem~\ref{thm:cost-aware} decreases as
+\(n^{-1/2}\).
 In particular, for any \(\varepsilon>0\), it is enough to take
 \[
 n
@@ -819,16 +982,19 @@ n
 \]
 to guarantee
 \[
-C(\widehat I)
+B(\widehat I)
 \le
 \min_{\substack{|I|=K\\ c(I)\ge c_0}}
-C(I)
+B(I)
 +\varepsilon,
 \]
 in addition to the basic exploration requirement of the theorem.
+This bound concerns the cost \(B(\widehat I)\) of the selected support;
+the realized average cost \(\overline B_T\) additionally contains the
+finite-\(T\) terms described in Theorem~\ref{thm:cost-aware}.
 
 If the cheapest admissible support is separated from every competing support
-by a cost gap \(\Delta_C>0\), then exact recovery of the cheapest support is
+by a cost gap \(\Delta_B>0\), then exact recovery of the cheapest support is
 guaranteed whenever
 \[
 n
@@ -837,24 +1003,10 @@ n
 \log\frac{2mK}{\delta}
 \max\left\{
 8,\,
-\frac{9\ell_{\max}^2}{2\Delta_C^2}
+\frac{9\ell_{\max}^2}{2\Delta_B^2}
 \right\}.
 \]
-For example, if \(\Delta_C=1\) dollar, it is enough to take
-\[
-n
-\ge
-\frac{K}{c_0^2}
-\log\frac{2mK}{\delta}
-\max\left\{
-8,\,
-\frac{9\ell_{\max}^2}{2}
-\right\},
-\]
-in which case the algorithm identifies the cheapest admissible support
-exactly.
 \end{remark}
-
 \section{Experiments}
 \label{sec:experiments}
 
@@ -871,131 +1023,265 @@ age\(\times\)sex, Black\(\times\)age, ethnicity\(\times\)age; 120 runs).}
 \label{fig:main}
 \end{figure*}
 
-\paragraph{Setup.} The target population is US adults with diagnosed
-diabetes in the 2023 National Health Interview Survey~\cite{nhis2023}
-(\(3{,}294\) respondents). Its \(m=16\) recruitment channels are reachable
-subpopulations identified by NHIS variables, e.g., online
-health-information seekers, landline users, Medicaid patients and regional
-clinic patients (Appendix~\ref{app:exp-data}); channel \(a\) draws from the
-weighted composition \(\mu_a\) of its pool. Costs per enrolled participant
-are \(\$72\) for the two online channels and \(\$199\) for the
-others~\cite{brogger2020online}. Two oracles know every \(\mu_a\): the
-\emph{oracle closed loop} runs the known-means rule of
-Section~\ref{sec:multi}, and the \emph{oracle open loop} realises the
-cheapest mixture \(x^\star\) with \(\sum_a x^\star_a\mu_a=p_G\) by
-deterministic herding (allocation error \(O(1/T)\)).
-\emph{Explore-then-commit} (ETC) samples uniformly for \(10\%\) of the
-horizon \(10^5\), then follows the cheapest mixture matching \(p_G\) under
-the estimated means. We use \(\delta=0.05\)
-(details in Appendix~\ref{app:experiments}).
+%\paragraph{Setup.}
+We use adults with diagnosed diabetes in the 2023 National Health Interview
+Survey (NHIS) as our target population~\citep{nhis2023}, giving \(3{,}294\)
+respondents. We construct \(m=16\) recruitment sources. Each source represents a population that
+could be reached through a particular recruitment method, such as online
+health-information seekers, landline users, Medicaid patients, or patients
+at clinics in different regions (Appendix~\ref{app:exp-data}). For each source
+\(a\), \(\mu_a\) is the vector of group proportions in that source. For example, for the
+ethnicity target, \(\mu_a\) gives the proportions of Hispanic,
+non-Hispanic Black and other demographics within source \(a\).
 
-\paragraph{Two sources: feedback, not knowledge, gives \(T^{-1}\).}
-Online recruits are \(40.0\%\) aged \(65+\), landline recruits \(78.0\%\),
-the target \(47.1\%\) (Figure~\ref{fig:main}(a)).
-Algorithm~\ref{alg:sign-based} attains the \(T^{-1}\) rate: for
-\(T\ge10^3\), \(E|S_T|\) stays between \(1.4\) and \(1.6\), between the
-lower bound \(0.11\) of Proposition~\ref{prop:one-dimensional-lower-bound}
-and the value \(14.7\) implied by the proof of
-Theorem~\ref{thm:one-dimensional-guarantee}. The oracle open loop knows
-both channels but attains only \(T^{-1/2}\):
-\(\sqrt T\,E|\widehat p_T-p_G|=0.378\) at \(T=10^5\), as
-Lemma~\ref{lem:sampling-noise-scale} predicts (\(0.380\)), \(84\) times the
-error of Algorithm~\ref{alg:sign-based}. Under
-Algorithm~\ref{alg:sign-based}, the two error terms of
-Lemma~\ref{lem:representation-decomposition} have correlation \(-0.9999\)
-across runs: the allocation cancels the realised noise. It survives batched
-decisions and delayed labels and degrades gracefully under drift
-(Appendix~\ref{app:exp-two}).
+We assign a cost of \(\$72\) per recruit to the two online sources and
+\(\$199\) to the remaining sources, based on the online and offline recruitment
+costs reported in~\citep{brogger2020online}.
 
-\paragraph{Many sources.} The target is the composition over Hispanic,
-non-Hispanic Black and other adults, with margin \(c=0.082\)
+\paragraph{Baselines.} 
+We compare our algorithms with several baselines. The \emph{oracle closed
+loop} knows every \(\mu_a\), and uses this to adaptively choose sources to correct the current representation error. The
+\emph{oracle open loop} also knows every \(\mu_a\), but instead computes in
+advance the cheapest fixed mixture \(x^\star\) satisfying
+\[
+\sum_a x^\star_a\mu_a=p_G.
+\]
+It then chooses sources so that, after \(T\) rounds, the fraction of samples
+drawn from each source is within \(O(1/T)\) of \(x^\star_a\). Importantly, this
+allocation is fixed in advance: if the realized recruits happen to
+overrepresent or underrepresent a group, the oracle does not change its
+mixture in response. 
+Finally, \emph{explore-then-commit} (ETC) does not know the source
+distributions. It samples all sources uniformly for the first \(10\%\) of the
+horizon, estimates their means, and then follows the cheapest mixture that
+matches \(p_G\) under those estimates. We use \(\delta=0.05\);
+additional details are given in Appendix~\ref{app:experiments}.
+
+\paragraph{One group: feedback gives the \(T^{-1}\) rate.}
+We first test the two-source setting of Section~\ref{sec:two-source} on
+NHIS data. The target has one group: adults aged \(65+\). We use two recruitment sources: \(40.0\%\) of online recruits
+are aged \(65+\), compared with \(78.0\%\) of landline recruits, while the
+target population is \(47.1\%\) aged \(65+\).
+
+Algorithm~\ref{alg:sign-based} achieves the predicted \(T^{-1}\) rate:
+for \(T\ge10^3\), the cumulative imbalance \(\sum_{t \geq T} |S_{t}|\) stays between \(1.4\)
+and \(1.6\). In contrast, the oracle open loop knows the true composition
+of both sources but follows a fixed mixture, and therefore achieves only the
+usual \(T^{-1/2}\) rate. At \(T=10^5\), its error is \(84\) times larger.
+
+The difference comes from feedback: Algorithm~\ref{alg:sign-based}
+continually adjusts the next source in response to the realized imbalance.
+Its allocation error and sampling noise have
+correlation \(-0.9999\), showing that the adaptive allocation nearly
+cancels the sampling noise. Further robustness experiments are reported in
+Appendix~\ref{app:exp-two}.
+
+\paragraph{Multiple groups.}
+We next consider a multi-group \(K\!=\!3\) race/ethnicity target corresponding to the proportions of individuals diagnosed with diabetes \{Hispanic: 19.0\%, non-Hispanic Black: 15.5\%, other: 65.4\%\}. We use all sixteen possible recruitment sources. 
+% \{Hispanic,
+% non-Hispanic Black, other\}, using all sixteen recruitment sources.
+Since these three groups are mutually exclusive, each recruit belongs to
+exactly one group, so \(\ell_0=1\).
+The target has margin \(c=0.082\)
 (Figure~\ref{fig:main}(b), Appendix Table~\ref{tab:many}).
-Algorithm~\ref{alg:ucb-sampling} approaches the oracle closed loop after a
-transient: \(\|S_T\|\) falls from \(10.6\) at \(T=1{,}202\) to \(2.5\) at
-\(T=10^5\), against \(2.0\) for the oracle. A bonus is necessary: with
-\(r_a\equiv0\), a channel misestimated early is never sampled again, and
-at least \(10\%\) of runs end \(0.03\) or more from the target. A much
-smaller one suffices: with \(0.3\,r_a\), \(90\%\) of runs are within
-\(0.01\) after \(1{,}202\) instead of \(3{,}631\) recruits.
 
-\begin{remark}[Theorem~\ref{thm:multidimensional-guarantee} is a rate result]
-\label{rem:rate}
-The radius \(r_a\) is deliberately conservative: a uniform guarantee needs
-all confidence bounds at once, and the proof calls a round good only when
-the chosen arm's radius is below \(c/4\). The algorithm only needs an arm
-that points against the current deficit, which it often finds while the
-radii are still large. Here the proof treats all \(10^5\) rounds as
-uncertain (\(N(c)\approx1.1\times10^5\)) and bounds \(\|S_T\|\) by about
-\(2\times10^6\), against a measured \(2.5\), and the radius \(0.3\,r_a\),
-which the theorem does not cover, works even better.
-Theorem~\ref{thm:multidimensional-guarantee} is mainly a rate result; the
-experiments give a more realistic picture of the constants.
-\end{remark}
+The main question is whether Algorithm~\ref{alg:ucb-sampling}, which must
+learn the unknown source distributions, can approach the performance of the
+closed-loop oracle that knows them from the start. At \(T=1{,}202\), the
+algorithm is still learning and has cumulative imbalance
+\(\|S_T\|=10.6\). By \(T=10^5\), this falls to \(2.5\), compared with
+\(2.0\) for the oracle. Thus, after the initial learning period, the
+unknown-means algorithm performs nearly as well as the known-means oracle.
 
-\paragraph{The margin decides what can be matched.} Refining the target
-from Black/other (\(K=2\), \(c=0.128\)) to ethnicity\(\times\)age (\(K=6\),
-\(c=0.0014\)) shrinks \(c\) \(90\)-fold, yet \(c\,\|S_T\|\) at \(T=10^5\)
-stays in \([0.07,0.25]\) for the oracle and in \([0.12,0.42]\) for
+Exploration is important during this learning period. If we set
+\(r_a\equiv0\) (no exploration bonus at all), the algorithm trusts its
+current estimates completely. A source that is poorly estimated from its
+first few samples may therefore be used too little afterward, and some runs
+become stuck far from the target. Indeed, at least \(10\%\) of runs finish
+\(0.03\) or more from \(p_G\).
+
+The theoretical confidence radius is conservative. With the full radius
+\(r_a\), \(90\%\) of runs reach error at most \(0.01\) after \(3{,}631\)
+recruits. Using the smaller radius \(0.3\,r_a\), the same criterion is
+reached after only \(1{,}202\) recruits. Thus, in this experiment, reducing
+the weight placed on exploration leads to substantially faster convergence.
+Some exploration is necessary, but the full theoretical exploration bonus
+appears to be larger than needed in practice.
+
+\paragraph{The margin decides what can be matched.}
+As we refine the target from Black/other
+(\(K=2\), \(c=0.128\)) to ethnicity\(\times\)age
+(\(K=6\), combining three ethnicity groups with two age groups,
+\(c=0.0014\)), the margin \(c\) becomes about \(90\) times smaller.
+At \(T=10^5\)\footnote{Here \(T\) is the number of simulated recruitment
+rounds. The NHIS data are used to estimate the distribution of each
+recruitment source, and recruits are then repeatedly simulated from these
+estimated distributions.}, the product \(c\|S_T\|\) remains of comparable
+size across the different targets: it lies in \([0.07,0.25]\) for the
+oracle and in \([0.12,0.42]\) for
 Algorithm~\ref{alg:ucb-sampling} with radius \(0.3\,r_a\)
-(Figure~\ref{fig:main}(c)): the imbalance scales as \(1/c\), like \(C_1\)
-in Remark~\ref{rem:constants}. After \(785\) recruits,
-Algorithm~\ref{alg:ucb-sampling} is \(5.8\) times closer to the target
-than uniform recruitment for ethnicity, but only \(2.7\) times for
-ethnicity\(\times\)age: the channels, not the algorithm, limit how fine a
-target a trial can match.
+(Figure~\ref{fig:main}(c)). Thus, the observed imbalance grows roughly as
+\(1/c\), consistent with the dependence on \(c\) in
+Remark~\ref{rem:constants}.
 
-\paragraph{Cost.} Theorem~\ref{thm:cost-support} compares against the
-cheapest support with margin at least \(c_0\): for \(c_0=0.05\),
-\(I^\star=\{\)online, southern clinics, western clinics\(\}\) at
-\(\$137.96\) per recruit. The cheapest feasible mixture costs \(\$106.14\)
-but has margin \(0.004\), outside this class; the difference is the price
-of a well-conditioned support. With known means (\(T=2\times10^4\)), the
-closed loop on \(I^\star\) costs \(\$138.12\) per recruit and the
-cost-unaware oracle \(\$198.99\). The myopic rule of
-Section~\ref{sec:cost} does very well here (\(\$153.68\), similar error),
-although Example~\ref{ex:myopic} shows that it can pay more than twice as
-much. With learnt means, Algorithm~\ref{alg:cost-support} (\(n=100\) per
-channel) followed by Algorithm~\ref{alg:ucb-sampling} (radius \(0.3\,r_a\))
-costs \(\$143.79\), \(26\%\) less than Algorithm~\ref{alg:ucb-sampling} on
-all channels, but its mean error is \(3.6\times10^{-3}\) rather than
-\(1.1\times10^{-4}\): \(32\%\) of selected supports pass the empirical test
-without containing \(p_G\), and those runs stall (\(2\%\) at \(n=400\), none
-at \(n=1{,}600\); the fallback was used in \(1\%\) of runs;
-Appendix~\ref{app:exp-cost}).
+This also makes finer targets harder to match. After \(785\) simulated
+recruits, Algorithm~\ref{alg:ucb-sampling} is \(5.8\) times closer to the
+target than uniform recruitment for ethnicity, but only \(2.7\) times
+closer for ethnicity\(\times\)age. As \(c\) becomes smaller, the available
+recruitment sources give the algorithm less room to correct the sample
+composition.
+\paragraph{Cost-aware sampling.}
+We next ask whether we can reduce recruitment cost while maintaining good
+representation. For \(c_0=0.05\), the cheapest three-source support with margin
+at least \(c_0\) is
+\[
+I^\star=\{\text{online, southern clinics, western clinics}\},
+\]
+with cost \(\$137.96\) per recruit. A cheaper feasible mixture exists,
+costing \(\$106.14\), but its margin is only \(0.004\). Thus the target lies
+very close to the boundary of this cheaper support, making it much more
+sensitive to errors in the estimated source distributions.
 
-\paragraph{Limitations.} Screening online recruits against quotas is
-cheaper than the feasible mixture for cost ratios above \(2.47\) (the
-meta-analysis ratio is \(2.76\)), and matching a coarse composition leaves
-within-group bias in other variables, e.g., \(+4.1\) pp in the share in
-fair or poor health (Appendices~\ref{app:exp-cost}
-and~\ref{app:exp-downstream}). Targets should include what an endpoint
-depends on, which shrinks \(c\).
+When the source distributions are known, running the closed-loop algorithm on
+\(I^\star\) costs \(\$138.12\) per recruit, compared with \(\$198.99\) when
+using all sources. The myopic rule of Section~\ref{sec:cost} also performs well
+on this instance, costing \(\$153.68\), although
+Example~\ref{ex:myopic} shows that it can be much more expensive in general.
 
-\bibliographystyle{unsrtnat}
+When the source distributions are unknown, Algorithm~\ref{alg:cost-support}
+first uses \(n=100\) samples per source to estimate them and select a low-cost
+support, and Algorithm~\ref{alg:ucb-sampling} then runs on the selected
+sources. This reduces the cost to \(\$143.79\) per recruit, \(26\%\) below
+running Algorithm~\ref{alg:ucb-sampling} on all sources. The tradeoff is that
+with only \(100\) samples per source, \(32\%\) of the selected supports do not
+actually contain \(p_G\), so those runs cannot reach the target. This falls
+to \(2\%\) with \(n=400\) and to zero with \(n=1{,}600\). Thus, cost-aware
+sampling can save substantially on recruitment cost, but enough initial
+exploration is needed to reliably identify a support that can reach the
+target.
+\paragraph{Limitations.}
+Our approach does not discard recruits after sampling. If
+\emph{cheap-and-discard} (quota screening) is allowed, however, recruiting
+only from a cheap online source and rejecting surplus demographic groups can
+sometimes be cheaper. For the ethnicity target, cheap-and-discard becomes
+cheaper than the feasible mixture when the offline-to-online cost ratio
+exceeds \(2.47\); the ratio used in our experiments is \(199/72=2.76\)
+(Appendix~\ref{app:exp-cost}).
+
+Matching the target demographics also does not guarantee representativeness
+in variables that are not included in the target. For example, after
+matching ethnicity, the recruited sample still overrepresents adults in
+fair or poor health by \(4.1\) percentage points
+(Appendix~\ref{app:exp-downstream}). In practice, variables that strongly
+affect the study endpoint should therefore also be included in the target.
+The tradeoff is that adding more target dimensions generally reduces the
+margin \(c\), making the representation problem harder.
+
+\subsection*{AI use statement}
+
+We used generative AI tools, including ChatGPT and Claude, to assist with
+theoretical development, checking and drafting mathematical arguments,
+experimental design and implementation, interpretation of results, and
+editing the manuscript. All AI-assisted proofs, code, experimental results,
+and factual claims were reviewed and verified by the authors. We take
+responsibility for the final content of this work, including text, claims,
+code, and other artifacts produced with the aid of generative AI.
+
+\bibliographystyle{abbrvnat}
 \bibliography{refs}
 
-% Authors: check that this statement is complete (e.g., whether AI tools were
-% also used for the experiment code or other sections) and move it to wherever
-% the venue asks for it.
-\section*{Use of AI Tools}
-We used Claude, an AI assistant developed by Anthropic, to draft
-Section~\ref{sec:experiments}, Appendix~\ref{app:experiments} and the
-instance in Example~\ref{ex:myopic}, and to produce the figures of
-Section~\ref{sec:experiments} and Appendix~\ref{app:experiments} from the
-output of our simulation code, which computed every reported number.
-Claude also suggested the myopic cost-ratio rule of Section~\ref{sec:cost}
-as an alternative to support selection. Our analysis showed that it can
-be substantially more expensive (Example~\ref{ex:myopic}), although it
-performs well on the NHIS instance (Section~\ref{sec:experiments}).
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section*{Checklist}
 
+\begin{enumerate}
+
+  \item For all models and algorithms presented, check if you include:
+  \begin{enumerate}
+    \item A clear description of the mathematical setting, assumptions, algorithm, and/or model.
+    [\textbf{Yes}. The mathematical setting and algorithms are described in
+    Sections~3--5.]
+
+    \item An analysis of the properties and complexity (time, space, sample size) of any algorithm.
+    [\textbf{Yes}. We provide finite-sample and asymptotic guarantees for the
+    proposed algorithms.]
+
+    \item (Optional) Anonymized source code, with specification of all dependencies, including external libraries.
+    [\textbf{Yes}. Anonymized code and instructions are included in the
+    supplementary material.]
+  \end{enumerate}
+
+  \item For any theoretical claim, check if you include:
+  \begin{enumerate}
+    \item Statements of the full set of assumptions of all theoretical results.
+    [\textbf{Yes}.]
+
+    \item Complete proofs of all theoretical results.
+    [\textbf{Yes}. Complete proofs are provided in the supplementary material.]
+
+    \item Clear explanations of any assumptions.
+    [\textbf{Yes}. The main assumptions, including interiority and the source
+    assumptions, are discussed in the main text.]
+  \end{enumerate}
+
+  \item For all figures and tables that present empirical results, check if you include:
+  \begin{enumerate}
+    \item The code, data, and instructions needed to reproduce the main experimental results (either in the supplemental material or as a URL).
+    [\textbf{Yes}. The experiments use the publicly available 2023 NHIS data,
+    and anonymized code and reproduction instructions are included in the
+    supplementary material.]
+
+    \item All the training details (e.g., data splits, hyperparameters, how they were chosen).
+    [\textbf{Not Applicable}. No machine-learning models are trained.]
+
+    \item A clear definition of the specific measure or statistics and error bars (e.g., with respect to the random seed after running experiments multiple times).
+    [\textbf{Yes}. Experimental protocols, metrics, numbers of replications,
+    and variability across runs are described in the supplementary material.]
+
+    \item A description of the computing infrastructure used. (e.g., type of GPUs, internal cluster, or cloud provider).
+    [\textbf{Yes}. Experiments were run on [INSERT COMPUTING INFORMATION].]
+  \end{enumerate}
+
+  \item If you are using existing assets (e.g., code, data, models) or curating/releasing new assets, check if you include:
+  \begin{enumerate}
+    \item Citations of the creator If your work uses existing assets.
+    [\textbf{Yes}. We use and cite the 2023 National Health Interview Survey
+    released by the National Center for Health Statistics.]
+
+    \item The license information of the assets, if applicable.
+    [\textbf{Yes}. We use the publicly released NHIS files under the NCHS
+    public-use data terms.]
+
+    \item New assets either in the supplemental material or as a URL, if applicable.
+    [\textbf{Yes}. The anonymized experimental code is included in the
+    supplementary material.]
+
+    \item Information about consent from data providers/curators.
+    [\textbf{Not Applicable}. We use previously collected public-use survey
+    data and did not recruit participants or collect new human-subject data.]
+
+    \item Discussion of sensible content if applicable, e.g., personally identifiable information or offensive content.
+    [\textbf{Yes}. We use only the public-use NHIS files, from which
+    potentially identifying information has been removed.]
+  \end{enumerate}
+
+  \item If you used crowdsourcing or conducted research with human subjects, check if you include:
+  \begin{enumerate}
+    \item The full text of instructions given to participants and screenshots.
+    [\textbf{Not Applicable}.]
+
+    \item Descriptions of potential participant risks, with links to Institutional Review Board (IRB) approvals if applicable.
+    [\textbf{Not Applicable}.]
+
+    \item The estimated hourly wage paid to participants and the total amount spent on participant compensation.
+    [\textbf{Not Applicable}.]
+  \end{enumerate}
+
+\end{enumerate}
 \clearpage
 \appendix
 \thispagestyle{empty}
-
-% Supplementary material: To improve readability, you must use a single-column format for the supplementary material.
 \onecolumn
-
 
 \section{Proofs}
 \begin{proof}[of Theorem \ref{thm:one-dimensional-guarantee} ]
@@ -1169,7 +1455,7 @@ Combining the two regions gives the one-step conditional inequality
 \]
 This inequality should be understood conditionally on the history up to time
 \(t\). Once \(\mathcal F_t\) is fixed, the current deficit \(S_t\), the
-potential \(V_t\), and the arm selected by the algorithm are all known; the
+potential \(V_t\), and the source selected by the algorithm are all known; the
 only remaining randomness comes from the next respondent. Thus, for each
 realized history, the inequality bounds the expected value of the potential
 after one further sample. Since \(V_t\) depends on the realized history, the
@@ -1279,27 +1565,27 @@ This completes the proof.
 The proof uses the concept of Upper Confidence Bounds (UCB), which is commonly
 used in multi-armed bandit problems. At every round of sampling, we can measure
 our current error \(S_t\) relative to the target distribution. What we do not
-know is the distribution associated with each arm. If we knew these
-distributions, it would be much easier to choose an arm that would reduce our
+know is the distribution associated with each source. If we knew these
+distributions, it would be much easier to choose a source that would reduce our
 sampling error. However, with each round of sampling, we obtain more information
-about the arms that have been sampled so far. This helps us choose a better
+about the sources that have been sampled so far. This helps us choose a better
 candidate for the next round and, eventually, keep the final sampling error
 bounded.
 
 The proof will proceed as follows. We assign a confidence radius \(r_a(n)\) to
-each arm. This tells us how close the empirical mean of arm \(a\), after \(n\)
+each source. This tells us how close the empirical mean of source \(a\), after \(n\)
 samples, is to its actual mean. If the confidence radius is smaller than
 \(c/4\),\footnote{Recall that \(c\) is the radius of the ball centered at
-\(p_G\) that lies inside the convex hull of the arm means \(\mu_a\).} then we
-can choose an arm that reduces our sampling error. Therefore, our algorithm will
-encourage sampling arms that are still poorly known. As more samples are
-collected from each arm, its confidence radius becomes smaller, allowing the
-algorithm to make increasingly reliable choices of which arm to sample next.
+\(p_G\) that lies inside the convex hull of the source means \(\mu_a\).} then we
+can choose a source that reduces our sampling error. Therefore, our algorithm will
+encourage sampling sources that are still poorly known. As more samples are
+collected from each source, its confidence radius becomes smaller, allowing the
+algorithm to make increasingly reliable choices of which source to sample next.
 
 There are several subtleties in the proof, which we will mention and discuss as
 they arise. One important issue is that the confidence bounds themselves are
 probabilistic statements. For instance, it is possible that the empirical mean
-of one of the arms remains far from its actual mean for a certain number of
+of one of the sources remains far from its actual mean for a certain number of
 samples. Therefore, we first need to show that, with high probability, all of
 the confidence bounds used by the algorithm are simultaneously valid. We begin
 by taking care of this issue.
@@ -1336,7 +1622,7 @@ Define the all-time confidence event
 Thus, \(\mathcal E\) is the event that every confidence bound actually used
 by the algorithm is valid throughout the sampling process.
 
-We choose the confidence radii so that, for every arm \(a\) and every
+We choose the confidence radii so that, for every source \(a\) and every
 \(n\ge1\),
 \begin{equation}
 \label{eqdmn}    \mathbb P\left(
@@ -1379,7 +1665,7 @@ and choose the confidence radius
         \right)
     }.
 \]
-For an arm that has not yet been sampled, we set $  r_a(0):=+\infty.$ These choices ensure that \eqref{eqdmn} and \eqref{eqd},
+For a source that has not yet been sampled, we set $  r_a(0):=+\infty.$ These choices ensure that \eqref{eqdmn} and \eqref{eqd},
 and that
 \[
     r_a(n)\longrightarrow0
@@ -1419,9 +1705,9 @@ We call round \(t+1\) \emph{uncertain} if
     \frac{c}{4}.
 \]
 Otherwise, we call the round \emph{good}. Thus, on a good round the selected
-arm is known accurately enough for us to guarantee that its true mean points
+source is known accurately enough for us to guarantee that its true mean points
 toward the target distribution. On an uncertain round we may not yet have such
-a guarantee, but each time such an arm is selected we obtain another sample
+a guarantee, but each time such a source is selected we obtain another sample
 from it and hence reduce its uncertainty.
 Let \(b_t\) denote the number of uncertain rounds among the first \(t\).
 % rounds, and define
@@ -1756,7 +2042,7 @@ penalty in \(b_t\) compensates for this possible increase.
 
 \noindent
 \textbf{Case 2: the round is good and \(\|S_t\|\) is sufficiently large.} 
-On a good round, the mean of the selected arm points toward the target, but the
+On a good round, the mean of the selected source points toward the target, but the
 actual observation is still random, so the realized error need not decrease on
 every round. We therefore first work with the squared norm, because expanding
 \(\|S_{t+1}\|^2\) exposes the directional drift through an inner product.
@@ -1766,7 +2052,7 @@ potential is exponential in \(\|S_t\|\), we use Hoeffding's lemma to turn this
 negative expected change in the norm, together with the bounded size of one-step
 fluctuations, into a contraction of the exponential potential.\\
 
-More precisely, by the interiority assumption, there exists an arm whose mean has directional drift at most \(-c\); on a good round, the confidence bounds and the UCB selection rule imply that the selected arm still has directional drift at most $-c/2$
+More precisely, by the interiority assumption, there exists a source whose mean has directional drift at most \(-c\); on a good round, the confidence bounds and the UCB selection rule imply that the selected source still has directional drift at most $-c/2$
 \[
     \left\langle
         \frac{S_t}{\|S_t\|},
@@ -2129,7 +2415,7 @@ For the confidence radius \(r_a(n)\) defined above, there exists a finite
 integer \(N(c)\) such that
 \[
     r_a(n)\le \frac{c}{4}
-    \qquad\text{for every arm }a
+    \qquad\text{for every source }a
     \text{ and every }n\ge N(c).
 \]
 Consequently,
@@ -2158,9 +2444,9 @@ there exists a finite \(N(c)\) such that
     \qquad
     \text{for all }n\ge N(c).
 \]
-Thus, an arm can be selected on an uncertain round only while it has been
-sampled fewer than \(N(c)\) times. Each arm can therefore generate at most
-\(N(c)\) uncertain rounds. Summing over the \(m\) arms gives
+Thus, a source can be selected on an uncertain round only while it has been
+sampled fewer than \(N(c)\) times. Each source can therefore generate at most
+\(N(c)\) uncertain rounds. Summing over the \(m\) sources gives
 \[
     b_T\le mN(c)=M(c)
 \]
@@ -2244,8 +2530,8 @@ and dividing by \(T\) gives
 \end{proof}
 \subsection{Proof of the Cost Theorem}
 The proof follows the structure of Algorithm~\ref{alg:cost-support}. We first
-show that, if each arm is explored sufficiently many times, then the empirical
-arm means are accurate enough to determine which collections of arms have a
+show that, if each source is explored sufficiently many times, then the empirical
+source means are accurate enough to determine which collections of sources have a
 usable interior margin around \(p_G\). In particular,
 Algorithm~\ref{alg:cost-support} keeps every support that is truly good enough,
 and any support it selects still has enough margin around \(p_G\).
@@ -2253,11 +2539,12 @@ and any support it selects still has enough margin around \(p_G\).
 We then show that the same exploration accuracy is enough to estimate the cost
 associated with each admissible support. Therefore
 Algorithm~\ref{alg:cost-support}, which selects the support with the smallest
-empirical cost, returns a collection of arms whose true cost is close to the
+empirical cost, returns a collection of sources whose true cost is close to the
 cheapest feasible one. Finally, once this support has been selected, we
-restrict the multidimensional adaptive sampling algorithm to those arms. The
+restrict the multidimensional adaptive sampling algorithm to those sources. The
 representation theorem then gives the desired convergence to \(p_G\), while
 the support-selection argument gives the near-minimal cost guarantee.
+
 \begin{proof}[Proof of Theorem~\ref{thm:cost-support}]
 Let
 \[
@@ -2310,7 +2597,7 @@ Now let
 I^\star
 \in
 \operatorname*{arg\,min}_{\substack{|I|=K\\c(I)\geq c_0}}
-C(I).
+B(I).
 \]
 Every support with true margin at least \(c_0\) is included in the
 empirical optimization set in Algorithm~\ref{alg:cost-support}. Indeed, if \(c(I)\geq c_0\), then
@@ -2355,53 +2642,54 @@ and would therefore also be included in the search.
 Therefore, \(I^\star\) is included in the empirical optimization set.
 Since \(\widehat I\) is the support returned by
 Algorithm~\ref{alg:cost-support} and, by definition, minimizes
-\(\widehat C(I)\) over this possibly larger set,
+\(\widehat B(I)\) over this possibly larger set,
 \[
-\widehat C(\widehat I)
+\widehat B(\widehat I)
 \leq
-\widehat C(I^\star).
+\widehat B(I^\star).
 \]
 
 By Lemma~\ref{lem:cost-stability}, since
 \(c(\widehat I)\geq c_0/2\),
 \[
-|\widehat C(\widehat I)-C(\widehat I)|
+|\widehat B(\widehat I)-B(\widehat I)|
 \leq
 \frac{2\ell_{\max}}{c_0}\varepsilon_n.
 \]
 Likewise, since \(c(I^\star)\geq c_0\),
 \[
-|\widehat C(I^\star)-C(I^\star)|
+|\widehat B(I^\star)-B(I^\star)|
 \leq
 \frac{\ell_{\max}}{c_0}\varepsilon_n.
 \]
 Therefore
 \[
 \begin{aligned}
-C(\widehat I)
+B(\widehat I)
 &\leq
-\widehat C(\widehat I)
+\widehat B(\widehat I)
 +
 \frac{2\ell_{\max}}{c_0}\varepsilon_n\\
 &\leq
-\widehat C(I^\star)
+\widehat B(I^\star)
 +
 \frac{2\ell_{\max}}{c_0}\varepsilon_n\\
 &\leq
-C(I^\star)
+B(I^\star)
 +
 \frac{3\ell_{\max}}{c_0}\varepsilon_n.
 \end{aligned}
 \]
 Recall that
 \[
-C(I^\star)
+B(I^\star)
 =
-\min_{\substack{|I|=K\\c(I)\geq c_0}}C(I),
+\min_{\substack{|I|=K\\c(I)\geq c_0}}B(I),
 \]
 this proves the claimed bound on \(\mathcal E\), and hence with
 probability at least \(1-\delta\).
 \end{proof}
+
 \begin{lemma}[Stability of the margin]
 \label{lem:margin-stability}
 Let \(I\subseteq[m]\), and suppose
@@ -2420,8 +2708,9 @@ Then
 \varepsilon.
 \]
 \end{lemma}
+
 \begin{proof}[Proof of Lemma~\ref{lem:margin-stability}]
-Each estimated arm mean \(\widehat\mu_a\) is within distance
+Each estimated source mean \(\widehat\mu_a\) is within distance
 \(\varepsilon\) of the corresponding true mean \(\mu_a\). Therefore every
 supporting boundary of the empirical convex hull can move by at most
 \(\varepsilon\) from the corresponding boundary of the true convex hull:
@@ -2438,8 +2727,9 @@ empirical convex hull, these distances can differ by at most
 \varepsilon.
 \]
 \end{proof}
+
 % \begin{proof}[Proof of Lemma~\ref{lem:margin-stability}]
-% The idea is that perturbing every arm mean by at most \(\varepsilon\)
+% The idea is that perturbing every source mean by at most \(\varepsilon\)
 % can move the boundary of their convex hull by at most \(\varepsilon\).
 % Since \(c(I)\) is the distance from \(p_G\) to the nearest boundary of
 % this convex hull, its value can change by at most the same amount.
@@ -2505,13 +2795,13 @@ empirical convex hull, these distances can differ by at most
 % \]
 % \end{proof}
 
-For a \(K\)-arm support \(I\) such that
+For a \(K\)-source support \(I\) such that
 \[
 p_G\in\operatorname{conv}\{\widehat\mu_a:a\in I\},
 \]
 define its empirical cost by
 \[
-\widehat C(I)
+\widehat B(I)
 :=
 \min\left\{
 \sum_{a\in I}\ell_a q_a:
@@ -2523,7 +2813,7 @@ p_G=\sum_{a\in I}q_a\widehat\mu_a
 
 \begin{lemma}[Stability of the empirical cost]
 \label{lem:cost-stability}
-Let \(I\subseteq[m]\) be a \(K\)-arm support with
+Let \(I\subseteq[m]\) be a \(K\)-source support with
 \[
 c(I)\geq c_0>0.
 \]
@@ -2532,7 +2822,7 @@ Suppose that
 p_G\in
 \operatorname{conv}\{\widehat\mu_a:a\in I\},
 \]
-so that the estimated arm means can represent \(p_G\). If
+so that the estimated source means can represent \(p_G\). If
 \[
 \max_{a\in I}
 \|\widehat\mu_a-\mu_a\|_2
@@ -2542,18 +2832,19 @@ so that the estimated arm means can represent \(p_G\). If
 then
 \[
 \left|
-\widehat C(I)-C(I)
+\widehat B(I)-B(I)
 \right|
 \leq
 \frac{\ell_{\max}}{c_0}\varepsilon.
 \]
 \end{lemma}
+
 \begin{proof}[Proof of Lemma~\ref{lem:cost-stability}] Let \(q\) be the unique probability vector satisfying
 \[
 p_G=\sum_{a\in I}q_a\mu_a,
 \]
 and let \(\widehat q\) be a probability vector attaining
-\(\widehat C(I)\), so that
+\(\widehat B(I)\), so that
 \[
 p_G=\sum_{a\in I}\widehat q_a\widehat\mu_a.
 \]
@@ -2570,7 +2861,7 @@ The argument is
 \Longrightarrow
 \widehat q\approx q
 \Longrightarrow
-\widehat C(I)\approx C(I),
+\widehat B(I)\approx B(I),
 \]
 where the middle implication follows from
 Lemma~\ref{lem:coefficient-stability}.\\
@@ -2617,7 +2908,7 @@ gives
 Therefore
 \[
 \begin{aligned}
-|\widehat C(I)-C(I)|
+|\widehat B(I)-B(I)|
 &=
 \left|
 \sum_{a\in I}\ell_a(\widehat q_a-q_a)
@@ -2643,7 +2934,8 @@ Suppose \(\dim(P)=K-1\). Assume that there exist \(p\in P\) and
 \{x\in \operatorname{aff}(P):\|x-p\|_2\leq c\}
 \subseteq P,
 \]
-where \[
+where
+\[
 \operatorname{aff}(P)
 =
 \left\{
@@ -2799,57 +3091,57 @@ then
 \frac{\varepsilon}{c}.
 \]
 \end{proof}
+
 \begin{lemma}[Cost-gap identification]
 \label{lem:cost-gap}
 Suppose \(I^\star\) and \(I\) satisfy
 \[
-C(I)
+B(I)
 \geq
-C(I^\star)+\Delta_C.
+B(I^\star)+\Delta_B.
 \]
 Suppose further that
 \[
-|\widehat C(I)-C(I)|
+|\widehat B(I)-B(I)|
 \leq
-\frac{\Delta_C}{4}
+\frac{\Delta_B}{4}
 \]
 and
 \[
-|\widehat C(I^\star)-C(I^\star)|
+|\widehat B(I^\star)-B(I^\star)|
 \leq
-\frac{\Delta_C}{4}.
+\frac{\Delta_B}{4}.
 \]
 Then
 \[
-\widehat C(I)
+\widehat B(I)
 >
-\widehat C(I^\star).
+\widehat B(I^\star).
 \]
 \end{lemma}
-
 
 \begin{proof}
 We have
 \[
-\widehat C(I)
+\widehat B(I)
 \geq
-C(I)-\frac{\Delta_C}{4}
+B(I)-\frac{\Delta_B}{4}
 \]
 and
 \[
-\widehat C(I^\star)
+\widehat B(I^\star)
 \leq
-C(I^\star)+\frac{\Delta_C}{4}.
+B(I^\star)+\frac{\Delta_B}{4}.
 \]
 Hence
 \[
 \begin{aligned}
-\widehat C(I)-\widehat C(I^\star)
+\widehat B(I)-\widehat B(I^\star)
 &\geq
-C(I)-C(I^\star)
--\frac{\Delta_C}{2}\\
+B(I)-B(I^\star)
+-\frac{\Delta_B}{2}\\
 &\geq
-\frac{\Delta_C}{2}
+\frac{\Delta_B}{2}
 >0.
 \end{aligned}
 \]
@@ -2906,7 +3198,7 @@ Let
 p_G=\left(\frac12,\ldots,\frac12\right),
 \]
 and fix \(c\in(0,1/2)\). For every
-\(\sigma\in\{-1,+1\}^K\), introduce an arm with mean
+\(\sigma\in\{-1,+1\}^K\), introduce a source with mean
 \[
 \mu_\sigma=p_G+c\sigma,
 \]
@@ -2916,11 +3208,11 @@ Bernoulli random variables with
 \mathbb P(Y_{t,j}=1\mid A_t=\sigma)
 =\frac12+c\sigma_j.
 \]
-The convex hull of the arm means is the cube
+The convex hull of the source means is the cube
 \(p_G+[-c,c]^K\), and therefore contains the Euclidean ball
 \(B(p_G,c)\).
 
-Now condition on the history up to time \(T-1\) and on the arm chosen
+Now condition on the history up to time \(T-1\) and on the source chosen
 at time \(T\). Let
 \[
 N_{T-1,1}=\sum_{t=1}^{T-1}Y_{t,1}.
@@ -2939,7 +3231,7 @@ of the two possible outcomes,
 \|\widehat p_T-p_G\|_2\geq \frac{1}{2T}.
 \]
 
-Under every arm, both values \(Y_{T,1}=0\) and \(Y_{T,1}=1\) occur with
+Under every source, both values \(Y_{T,1}=0\) and \(Y_{T,1}=1\) occur with
 probability at least
 \[
 q:=\frac12-c.
@@ -2952,6 +3244,7 @@ Therefore
 \]
 The expectation bound follows immediately.
 \end{proof}
+
 \section{A Martingale Central Limit Theorem for the Sampling Noise}
 \label{app:martingale-clt}
 
@@ -3147,7 +3440,7 @@ population is all adults with diagnosed diabetes.
 \paragraph{Channels.} A channel is the set of target-population
 respondents that a recruitment method can reach
 (Table~\ref{tab:channels}); pools overlap, and pools with fewer than
-\(150\) respondents would be discarded (none is). The arm distribution of
+\(150\) respondents would be discarded (none is). The source distribution of
 a channel is the weighted distribution of its pool over the target
 categories, so \(\mu_a\) is the weighted composition of the pool. In the
 respondent-level experiment of Appendix~\ref{app:exp-downstream}, a draw
@@ -3660,7 +3953,7 @@ Algorithm~\ref{alg:sign-based} samples \(B\) and \(C\) in proportions
 (\(n=1{,}000\), \(c_0=0.1\)) followed by Algorithm~\ref{alg:ucb-sampling}
 pays \(1.03\), the excess being the exploration of \(C\). Because
 \(p_G=0.5\), \(S_t\) often returns to zero in this example, so the tie
-rule matters: breaking ties towards the least-sampled arm lowers the cost
+rule matters: breaking ties towards the least-sampled source lowers the cost
 of the myopic rule to \(1.86\), still \(86\%\) above the support-based
 rule. On the NHIS instance \(S_t\) essentially never returns to zero, and
 the tie rule plays no role.
@@ -3779,9 +4072,9 @@ right on every curve. (d) Cost per retained recruit against the cost ratio
 cost \(\$72\), offline recruits \(\$72r\)).}
 \label{tab:screening}
 \centering\small
-\begin{tabular}{rrrr}
+\begin{tabular}{cccc}
 \hline
-\(r\) & feasible mixture & quota screening, online & mixture with discards\\
+offline/online cost ratio \(r\) & feasible mixture & quota screening, online & mixture with discards\\
 \hline
 1 & 72.00 & 100.47 & 72.00\\
 1.5 & 81.68 & 100.47 & 81.68\\
@@ -3838,4 +4131,5 @@ uniform & \(+2.5\) & \(+2.1\) & \(+2.6\) & \(-0.1\) & \(+3.7\) & \(+5.5\) & 1.00
 \end{table}
 
 \FloatBarrier
+
 \end{document}
