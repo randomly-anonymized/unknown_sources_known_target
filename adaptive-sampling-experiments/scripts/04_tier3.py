@@ -1,9 +1,12 @@
-"""Tier 3 (sec. 6): cost-aware sampling. Stages: e31 (support selection), e32 (end-to-end),
-e33 (c0 trade-off), e34 (myopic-rule counterexample, Example 2), e35 (error at a fixed total budget),
-refs (cost references / break-even table; not used in the manuscript).
+"""Tier 3 (sec. 6): cost-aware sampling. Stages: e31 (support selection), e32 <key> / e32merge (cost per
+recruit and error against the sample size T; Figure 1(c)), e33 (c0 trade-off), e34 (myopic-rule
+counterexample, Example 2), e35 <key> / e35merge (error at a fixed total budget), refs (cost references /
+break-even table; not used in the manuscript).
 
-The cost experiments use the meta-analysis medians: online recruits at $72 and offline recruits at
-OFFLINE_COST (default $199; can be overridden through the environment variable of the same name)."""
+The cost experiments use the Black/other target of the diabetes population and the meta-analysis medians:
+online recruits at $72 and offline recruits at OFFLINE_COST (default $199; can be overridden through the
+environment variable of the same name). No policy discards recruits; the exploration samples of
+Algorithm 3 are kept in the sample and also used by Algorithm 2 to estimate the source means."""
 import json, os, sys
 import numpy as np, pandas as pd
 
@@ -17,13 +20,15 @@ from src.runner import run, log_checkpoints, lp_discard_cost, run_budget
 from src.theory import thm3_cost_bound, thm3_n
 
 RES, SC = os.path.join(ROOT, "results"), os.path.join(ROOT, "data", "scenarios")
-SID = "S-DIAB__L2_K3_eth"
+SID = "S-DIAB__L1_K2_black"
 N_GRID = [25, 50, 100, 200, 400, 800, 1600]
 C0_GRID = [0.01, 0.02, 0.05, 0.10]
-R_SEL, T_E2E, R_E2E = 250, 20_000, 200
+C0_MAIN, N_MAIN = 0.02, 1600                                    # Algorithm 3 in Figure 1(c)
+R_SEL, T_E2E, R_E2E = 250, 300_000, 200
+T_C0 = 100_000                                                  # e33 horizon
 COST_RANGE = {72.0: (3.9, 251.2), 199.0: (19.1, 839.0)}     # JMIR 2020 meta-analysis ranges
 OFFLINE_COST = float(os.environ.get("OFFLINE_COST", 199.0))    # offline cost per recruit in the cost experiments
-BUDGETS = np.geomspace(1e6, 8e6, 10)                           # e35: total budgets ($)
+BUDGETS = np.geomspace(1e6, 1.6e7, 13)                         # e35: total budgets ($)
 
 
 def scenario():
@@ -116,37 +121,58 @@ def stage_e31():
     print(base.groupby('c0')[['n_admissible', 'C_star', 'C_any', 'gap2']].first().to_string(float_format=lambda x: f"{x:,.3f}"))
 
 
-def stage_e32():
+def cheapest_admissible(env, c0):
+    truth = support_table(env.mu, env.p_G, env.cost, enumerate_supports(env.m, env.K))
+    adm = sorted([t for t in truth if np.isfinite(t[3]) and t[1] >= c0], key=lambda z: z[3])
+    return list(adm[0][0]), adm[0][3]
+
+
+E32_POLICIES = {
+    "alg3": lambda env: Alg3ThenAlg2(n=N_MAIN, c0=C0_MAIN, beta=0.3),
+    "alg3n800": lambda env: Alg3ThenAlg2(n=800, c0=C0_MAIN, beta=0.3),
+    "alg3n400": lambda env: Alg3ThenAlg2(n=400, c0=C0_MAIN, beta=0.3),
+    "alg2": lambda env: Alg2UCB(0.3),
+    "myopic": lambda env: MyopicCost(beta=0.3),               # myopic cost-ratio rule, optimistic estimated means
+    "oracle": lambda env: OracleCL(arms=cheapest_admissible(env, C0_MAIN)[0]),
+    "oracleall": lambda env: OracleCL(),
+    "olmincost": lambda env: OpenLoopHerding(feasible_allocation(env.mu, env.p_G, env.cost)[0], "ORACLE-OL-mincost"),
+    "online": lambda env: FixedArm(int(np.argmin(env.cost)), "N1-CHEAPEST"),
+    "uniform": lambda env: RoundRobin(),
+}
+
+
+def stage_e32(key):
+    """Cost per recruit and error against T. Writes results/E3_endtoend_parts/<key>.csv."""
     sc, env = scenario()
-    mu, p_G, cost = env.mu, env.p_G, env.cost
-    supports = enumerate_supports(env.m, env.K)
-    truth = support_table(mu, p_G, cost, supports)
-    adm = sorted([t for t in truth if np.isfinite(t[3]) and t[1] >= 0.05], key=lambda z: z[3])
-    I_star = list(adm[0][0])
-    print(f"  cheapest admissible support (c0=0.05): {[env.names[i] for i in I_star]} ${adm[0][3]:.2f}")
-    x_cost, _ = feasible_allocation(mu, p_G, cost)
-    pols = [Alg3ThenAlg2(n=100, c0=0.05, beta=0.3), Alg3ThenAlg2(n=25, c0=0.05, beta=0.3),
-            Alg3ThenAlg2(n=400, c0=0.05, beta=0.3),
-            Alg2UCB(0.3), MyopicCost(oracle=True), MyopicCost(beta=0.3), OracleCL(arms=I_star), OracleCL(),
-            OpenLoopHerding(x_cost, "ORACLE-OL-mincost"),
-            FixedArm(int(np.argmin(cost)), "N1-CHEAPEST"), RoundRobin()]
-    frames, cps = [], log_checkpoints(T_E2E, 20)
-    for pol in pols:
-        df, _ = run(env, pol, T_E2E, R_E2E, seed=6001, checkpoints=cps)
-        df["scenario"], df["experiment"] = SID, "E3.2"
-        df["fallback_rate"] = (float(np.mean(pol.fallback)) if getattr(pol, "fallback", None) is not None else np.nan)
-        frames.append(df)
-        print(f"  {pol.name:<24} err={df.err_l2_mean.iloc[-1]:.5f} cost/n=${df.cost_per_sample.iloc[-1]:6.2f}", flush=True)
-    pd.concat(frames).to_csv(f"{RES}/E3_endtoend.csv", index=False)
+    pol = E32_POLICIES[key](env)
+    if key == "oracle":
+        pol.name = "ORACLE-CL(I*)"
+    cps = np.union1d(log_checkpoints(T_E2E, 40), [20_000, 100_000])
+    df, _ = run(env, pol, T_E2E, R_E2E, seed=6001, checkpoints=cps)
+    df["scenario"], df["experiment"] = SID, "E3.2"
+    df["fallback_rate"] = (float(np.mean(pol.fallback)) if getattr(pol, "fallback", None) is not None else np.nan)
+    out = os.path.join(RES, "E3_endtoend_parts"); os.makedirs(out, exist_ok=True)
+    df.to_csv(os.path.join(out, f"{key}.csv"), index=False)
+    for T in [20_000, 100_000, T_E2E]:
+        r = df[df["T"] == T].iloc[0]
+        print(f"  {pol.name:<24} T={T:>7} err={r.err_l2_mean:.2e} (med {r.err_l2_med:.2e}) cost/n=${r.cost_per_sample:6.2f}",
+              flush=True)
+
+
+def stage_e32_merge():
+    import glob
+    df = pd.concat([pd.read_csv(f) for f in sorted(glob.glob(os.path.join(RES, "E3_endtoend_parts", "*.csv")))])
+    df.to_csv(f"{RES}/E3_endtoend.csv", index=False)
+    print(df[df["T"] == 100_000][["policy", "err_l2_mean", "err_l2_med", "cost_per_sample"]].to_string(index=False))
 
 
 def stage_e33():
     sc, env = scenario()
     rows = []
     for c0 in C0_GRID:
-        for n in [25, 100, 400]:
+        for n in [400, 800, 1600]:
             pol = Alg3ThenAlg2(n=n, c0=c0, beta=0.3, tag=f"ALG3+2(n={n},c0={c0})")
-            df, _ = run(env, pol, T_E2E, 100, seed=7001, checkpoints=[2000, 5000, T_E2E])
+            df, _ = run(env, pol, T_C0, 100, seed=7001, checkpoints=[30_000, T_C0])
             for _, r in df.iterrows():
                 rows.append(dict(c0=c0, n=n, T=int(r["T"]), err_l2=r["err_l2_mean"],
                                  cost_per_sample=r["cost_per_sample"], cost_total=r["cost_mean"],
@@ -165,6 +191,7 @@ def stage_e34():
     T, R = 100_000, 100
     pols = [MyopicCost(oracle=True, tie_arm=1, tag="MYOPIC-COST(oracle,tie=B)"),
             MyopicCost(oracle=True, tag="MYOPIC-COST(oracle,tie=least-sampled)"),
+            MyopicCost(beta=0.3, tag="MYOPIC-COST(estimated means)"),
             Alg1Sign(arm_high=1, arm_low=0, coord=0), Alg3ThenAlg2(n=1000, c0=0.1, beta=1.0)]
     rows = []
     for pol in pols:
@@ -180,15 +207,7 @@ def stage_e34():
     print("analytic: myopic 2, support {A,B} 1")
 
 
-E35_POLICIES = {
-    "alg3": lambda: Alg3ThenAlg2(n=400, c0=0.05, beta=0.3),
-    "alg3n200": lambda: Alg3ThenAlg2(n=200, c0=0.05, beta=0.3),
-    "alg3n100": lambda: Alg3ThenAlg2(n=100, c0=0.05, beta=0.3),
-    "alg2": lambda: Alg2UCB(0.3),
-    "myopic": lambda: MyopicCost(oracle=True),                # myopic cost-ratio rule of sec. 5, true means
-    "myopicucb": lambda: MyopicCost(beta=0.3),                # the same rule with optimistic estimated means
-    "oracle": None,                                           # closed loop on the cheapest admissible support
-}
+E35_POLICIES = {k: E32_POLICIES[k] for k in ["alg3", "alg3n800", "alg3n400", "alg2", "myopic", "oracle"]}
 
 
 def stage_e35(key):
@@ -197,13 +216,7 @@ def stage_e35(key):
     mu, p_G, cost, names = env.mu, env.p_G, env.cost, env.names
     out = os.path.join(RES, "E3_budget_parts"); os.makedirs(out, exist_ok=True)
     R, rows = 200, []
-    if key == "oracle":
-        supports = enumerate_supports(env.m, env.K)
-        adm = sorted([t for t in support_table(mu, p_G, cost, supports) if np.isfinite(t[3]) and t[1] >= 0.05],
-                     key=lambda z: z[3])
-        pol = OracleCL(arms=list(adm[0][0]))
-    else:
-        pol = E35_POLICIES[key]()
+    pol = E35_POLICIES[key](env)
     err, Tb = run_budget(env, pol, BUDGETS, R, seed=9002, T_cap=int(BUDGETS[-1] / cost.min()) + 10)
     fb = float(np.mean(pol.fallback)) if getattr(pol, "fallback", None) is not None else np.nan
     for b_i, b in enumerate(BUDGETS):
@@ -244,8 +257,8 @@ def stage_refs():
 
 
 if __name__ == "__main__":
-    if sys.argv[1] == "e35":
-        stage_e35(sys.argv[2])
+    if sys.argv[1] in ("e32", "e35"):
+        dict(e32=stage_e32, e35=stage_e35)[sys.argv[1]](sys.argv[2])
     else:
-        dict(e31=stage_e31, e32=stage_e32, e33=stage_e33, e34=stage_e34, e35merge=stage_e35_merge,
+        dict(e31=stage_e31, e32merge=stage_e32_merge, e33=stage_e33, e34=stage_e34, e35merge=stage_e35_merge,
              refs=stage_refs)[sys.argv[1]]()

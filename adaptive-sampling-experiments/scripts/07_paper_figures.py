@@ -106,39 +106,71 @@ def fig_main():
             "Thm. 1 (proof constants)"]
     fig.legend([hl[k] for k in keys], keys, loc="upper center", ncol=5, bbox_to_anchor=(0.5, 1.0),
                columnspacing=1.4, handlelength=2.4, fontsize=5.9)
-    # (c) cost-aware sampling: error at a fixed total budget (median costs, offline $199)
-    plot_budget(ax[2], ["ALG3+2(n=400,c0=0.05)", "MYOPIC-COST(oracle)", "ALG2(beta=0.3)", "ORACLE-CL(I*)"],
-                labels={"ALG3+2(n=400,c0=0.05)": "Alg. 3 $\\to$ 2", "MYOPIC-COST(oracle)": "myopic rule",
-                        "ALG2(beta=0.3)": "Alg. 2, all", "ORACLE-CL(I*)": "oracle on $I^\\star$"})
-    ax[2].set_title("(c) 16 channels; ethnic target, fixed budget", pad=3)
-    ax[2].set_ylim(3e-7, 0.08)
-    ax[2].legend(loc="lower left", fontsize=5.4, ncol=2, columnspacing=0.8, handlelength=1.8)
+    # (c) cost-aware sampling: cost per recruit against the sample size (Black/other target, median costs)
+    plot_cost_per_recruit(ax[2], ["ALG3+2(n=1600,c0=0.02)", "MYOPIC-COST", "ALG2(beta=0.3)", "ORACLE-CL(I*)"],
+                          labels={"ALG3+2(n=1600,c0=0.02)": "Alg. 3 $\\to$ 2", "MYOPIC-COST": "myopic rule",
+                                  "ALG2(beta=0.3)": "Alg. 2, all", "ORACLE-CL(I*)": "oracle on $I^\\star$"})
+    ax[2].set_title("(c) 16 channels; Black / other, cost", pad=3)
+    ax[2].legend(loc="lower left", fontsize=5.4, bbox_to_anchor=(0.0, 0.11), ncol=2, columnspacing=0.8,
+                 handlelength=1.8)
     fig.savefig(f"{OUT}/fig_main.pdf", bbox_inches=None); plt.close(fig)
 
 
 BUDGET_STYLE = {
-    "ALG3+2(n=400,c0=0.05)": dict(label="Alg. 3 $\\to$ Alg. 2 ($n=400$)", color="#000000", lw=1.7),
-    "ALG3+2(n=200,c0=0.05)": dict(label="Alg. 3 $\\to$ Alg. 2 ($n=200$)", color="#555555", lw=1.0, ls="--"),
-    "ALG3+2(n=100,c0=0.05)": dict(label="Alg. 3 $\\to$ Alg. 2 ($n=100$)", color="#999999", lw=1.0, ls=":"),
-    "MYOPIC-COST(oracle)": dict(label="myopic rule, true means", color="#D55E00", lw=1.2, marker="s", ms=2.0),
-    "MYOPIC-COST": dict(label="myopic rule, estimated means", color="#E69F00", lw=1.0, ls="--", marker="s", ms=1.8),
+    "ALG3+2(n=1600,c0=0.02)": dict(label="Alg. 3 $\\to$ Alg. 2 ($n=1600$)", color="#000000", lw=1.7),
+    "ALG3+2(n=800,c0=0.02)": dict(label="Alg. 3 $\\to$ Alg. 2 ($n=800$)", color="#555555", lw=1.0, ls="--"),
+    "ALG3+2(n=400,c0=0.02)": dict(label="Alg. 3 $\\to$ Alg. 2 ($n=400$)", color="#999999", lw=1.0, ls=":"),
+    "MYOPIC-COST": dict(label="myopic rule", color="#D55E00", lw=1.2, marker="s", ms=2.0),
     "ALG2(beta=0.3)": dict(label="Alg. 2, all channels", color="#555555", lw=1.0, ls="-."),
     "ORACLE-CL(I*)": dict(label="oracle closed loop on $I^\\star$", color="#0072B2", lw=1.0),
 }
+B_ISTAR = 91.27                                 # cost per recruit of I* (Black/other, c0 = 0.02)
+
+
+def _style(p, labels):
+    st = dict(BUDGET_STYLE[p]); lab = st.pop("label")
+    if "marker" in st:
+        st["markevery"] = 3
+    return st, (labels or {}).get(p, lab)
+
+
+def plot_cost_per_recruit(ax, policies, labels=None):
+    d = pd.read_csv(f"{RES}/E3_endtoend.csv")
+    for p in policies:
+        g = d[(d.policy == p) & (d["T"] >= 1000)].sort_values("T")
+        st, lab = _style(p, labels)
+        ax.semilogx(g["T"], g.cost_per_sample, label=lab, **st)
+    ax.axhline(B_ISTAR, color=REF["color"], lw=REF["lw"], ls=":")
+    ax.annotate("$B(I^\\star)$", (3.2e5, B_ISTAR), textcoords="offset points", xytext=(-2, -7), ha="right",
+                fontsize=5.4)
+    ax.set_xlabel("recruits $T$", labelpad=1)
+    ax.set_ylabel("\\$ per recruit", labelpad=1)
+    ax.set_xlim(1e3, 3.2e5); ax.set_ylim(80, 210)
+
+
+def plot_error_T(ax, policies, labels=None):
+    d = pd.read_csv(f"{RES}/E3_endtoend.csv")
+    for p in policies:
+        g = d[(d.policy == p) & (d["T"] >= 1000)].sort_values("T")
+        st, lab = _style(p, labels)
+        ax.loglog(g["T"], g.err_l2_mean, label=lab, **st)
+    ax.set_xlabel("recruits $T$", labelpad=1)
+    ax.set_ylabel("$\\|\\widehat p_T-p_G\\|_2$", labelpad=1)
+    ax.set_xlim(1e3, 3.2e5)
 
 
 def plot_budget(ax, policies, labels=None):
     d = pd.read_csv(f"{RES}/E3_budget.csv")
     for p in policies:
         g = d[d.policy == p].sort_values("budget")
-        st = dict(BUDGET_STYLE[p]); lab = st.pop("label")
-        lab = (labels or {}).get(p, lab)
+        st, lab = _style(p, labels)
+        st.pop("markevery", None)
         ax.loglog(g.budget, g.err_mean, label=lab, **st)
     ax.set_xlabel("total budget (\\$)", labelpad=1)
     ax.set_ylabel("$\\|\\widehat p_T-p_G\\|_2$", labelpad=1)
-    ax.set_xlim(0.95e6, 8.4e6)
-    ticks = [1e6, 2e6, 4e6, 8e6]
-    ax.set_xticks(ticks); ax.set_xticklabels(["1M", "2M", "4M", "8M"])
+    ax.set_xlim(0.95e6, 1.7e7)
+    ticks = [1e6, 2e6, 4e6, 8e6, 16e6]
+    ax.set_xticks(ticks); ax.set_xticklabels(["1M", "2M", "4M", "8M", "16M"])
     ax.xaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
 
 
@@ -164,12 +196,16 @@ def fig_ladder():
 
 
 def fig_budget():
-    fig, ax = plt.subplots(1, 1, figsize=(3.6, 2.4))
-    plot_budget(ax, ["ALG3+2(n=400,c0=0.05)", "ALG3+2(n=200,c0=0.05)", "ALG3+2(n=100,c0=0.05)",
-                     "MYOPIC-COST(oracle)", "MYOPIC-COST", "ALG2(beta=0.3)", "ORACLE-CL(I*)"])
-    ax.legend(loc="lower left", fontsize=5.4)
-    ax.set_ylim(4e-7, 0.08)
-    fig.tight_layout(); fig.savefig(f"{OUT}/figA_budget.pdf"); plt.close(fig)
+    """Black/other target: cost per recruit and error against T, and error at a fixed budget."""
+    pols = ["ALG3+2(n=1600,c0=0.02)", "ALG3+2(n=800,c0=0.02)", "ALG3+2(n=400,c0=0.02)",
+            "MYOPIC-COST", "ALG2(beta=0.3)", "ORACLE-CL(I*)"]
+    fig, ax = plt.subplots(1, 3, figsize=(FULL_W, 2.2))
+    plot_cost_per_recruit(ax[0], pols); ax[0].set_title("(a) cost per recruit")
+    plot_error_T(ax[1], pols); ax[1].set_title("(b) error against the sample size")
+    plot_budget(ax[2], pols); ax[2].set_title("(c) error at a fixed budget")
+    h, l = ax[0].get_legend_handles_labels()
+    fig.legend(h, l, loc="upper center", ncol=6, bbox_to_anchor=(0.5, 1.0), fontsize=5.6, columnspacing=1.0)
+    fig.tight_layout(rect=(0, 0, 1, 0.9), w_pad=0.6); fig.savefig(f"{OUT}/figA_budget.pdf"); plt.close(fig)
 
 
 # ------------------------------------------------------------------ appendix figures
@@ -294,15 +330,16 @@ def fig_cost():
     for j, (n, g) in enumerate(tr.groupby("n")):
         g = g.sort_values("c0")
         ax[2].semilogy(g.cost_per_sample, g.err_l2, marker="o", ms=2.2, color=SEQ[j + 1], label=f"$n={n}$")
-        if n == 100:                              # c0 increases left to right on every curve
+        if n == 1600:                             # c0 increases left to right on every curve
             for _, r in g.iterrows():
                 ax[2].annotate(f"$c_0$={r.c0:g}", (r.cost_per_sample, r.err_l2), textcoords="offset points",
-                               xytext=(-3, -2) if r.c0 == 0.01 else (0, -8),
-                               ha="right" if r.c0 == 0.01 else "center", fontsize=4.8, color=SEQ[j + 1])
-    ax[2].set_xlim(98, 202)
-    ax[2].set_xlabel("\\$ per recruit"); ax[2].set_ylabel("$\\|\\widehat p_T-p_G\\|_2$ at $T=2\\cdot 10^4$")
+                               xytext={0.01: (-2, 6), 0.02: (3, -7), 0.05: (0, -7)}.get(r.c0, (-2, -7)),
+                               ha={0.01: "right", 0.02: "left", 0.05: "center"}.get(r.c0, "right"), va="center",
+                               fontsize=4.8, color=SEQ[j + 1])
+    ax[2].set_xlabel("\\$ per recruit"); ax[2].set_ylabel("$\\|\\widehat p_T-p_G\\|_2$ at $T=10^5$")
     ax[2].set_title("(c) margin threshold $c_0$")
-    ax[2].legend(loc="lower left")
+    ax[2].set_xlim(92, 205)
+    ax[2].legend(loc="upper right")
     fig.tight_layout(w_pad=0.5); fig.savefig(f"{OUT}/figA_cost.pdf"); plt.close(fig)
 
 
