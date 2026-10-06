@@ -85,7 +85,7 @@
 \aistatsaddress{ Institution 1 \And  Institution 2 \And Institution 3 } ]
 
 \begin{abstract}
-  This paper studies how to sequentially sample from multiple unknown source populations to match a known target population using as few samples as possible. This problem arises in polling, medical trials, and in scientific discovery. We give an algorithm for the simplest case of two sources and show that it matches a lower bound up to constant factors. We extend this algorithm to multiple sources and to when sources have different costs. Experiments based on the 2023 National Health Interview Survey show the benefit of this approach over baselines.
+  This paper studies how to sequentially sample from multiple unknown source populations to match a known target population using as few samples as possible without rejection. This problem arises in polling, medical trials, and in scientific discovery. We give an algorithm for the simplest case of two sources and show that it matches a lower bound up to constant factors. We extend this algorithm to multiple sources and to when sources have different costs. Experiments based on the 2023 National Health Interview Survey show the benefit of this approach over baselines.
 \end{abstract}
 
 
@@ -297,7 +297,7 @@ mixture. Nevertheless, it keeps the cumulative representation error close to
 zero. Together with Proposition~\ref{prop:one-dimensional-lower-bound}, the theorem below shows that
 the sign-based rule is rate-optimal: no adaptive sampling algorithm can achieve
 a uniformly better order than \(T^{-1}\).
-\begin{theorem}[One-dimensional representation]
+\begin{theorem}[One group]
 \label{thm:one-dimensional-guarantee}
 Assume that
 \[
@@ -561,7 +561,7 @@ exploration bonus. Our theoretical guarantee uses \(\beta=1\), we examine smalle
 \end{algorithmic}
 \end{algorithm}
 
-\begin{theorem}[Multidimensional representation]
+\begin{theorem}[Multiple groups]
 \label{thm:multidimensional-guarantee}
 Assume that every observation \(Y_t\in\{0,1\}^K\) satisfies
 \(\|Y_t\|_0\le \ell_0\), and suppose \(p_G\) lies in the
@@ -599,13 +599,8 @@ such that, for every adaptive sampling algorithm and every \(T\geq 1\),
 \geq q
 \]
 for some constant \(q>0\) independent of \(T\).
-Consequently,
-\[
-\mathbb E\|\widehat p_T-p_G\|_2
-\geq \frac{q}{2T}.
-\]
-Thus the \(T^{-1}\) dependence in Theorem~\ref{thm:multidimensional-guarantee} cannot be improved
-uniformly over the class of admissible instances.
+% Thus the \(T^{-1}\) dependence in Theorem~\ref{thm:multidimensional-guarantee} cannot be improved
+% uniformly over the class of admissible instances.
 \end{proposition}
 
 \section{Accounting for Costs}
@@ -723,7 +718,7 @@ For an empirically admissible support \(I\), define
 \]
 where \(\Delta_K\) is the \(K\)-dimensional probability simplex.
 \begin{algorithm}[t]
-\caption{Minimum-Cost Support Selection}
+\caption{Minimum-Cost Source Selection}
 \label{alg:cost-support}
 \begin{algorithmic}[1]
 
@@ -825,7 +820,7 @@ for cheap \& discard).}
 % \end{algorithmic}
 % \end{algorithm}
 
-\begin{theorem}[Guarantee for minimum-cost]
+\begin{theorem}[Identifiability of min-cost sources]
 \label{thm:cost-support}
 Assume that there exists at least one \(K\)-source support \(I\subseteq[m]\)
 with $c(I)\geq c_0$. 
@@ -861,21 +856,22 @@ B(I)
 The benchmark in Theorem~\ref{thm:cost-support} is the cheapest support
 with margin at least \(c_0\), not the cheapest feasible mixture, which may
 have a smaller margin and be harder to identify. 
-The \(mn\) observations collected during the exploration phase need not be
-discarded and may also be retained in the final sample.
-\begin{theorem}[Cost-aware  sampling]
+% The \(mn\) observations collected during the exploration phase need not be
+% discarded and may also be retained in the final sample.
+\begin{theorem}[Cost-aware sampling]
 \label{thm:cost-aware}
 Suppose there are \(m\) sampling methods and that there exists at least one
-\(K\)-source support \(I\) such that $c(I)\ge c_0>0$. Sample each source \(n\) times, with
+\(K\)-source support \(I\) such that \(c(I)\ge c_0>0\). Sample each source
+\(n\) times, with
 \[
 n\ge
 \frac{8K}{c_0^2}
 \log\frac{2mK}{\delta},
 \]
-use Algorithm~\ref{alg:cost-support} to select \(\widehat I\), and then run
-the multi-source sampling algorithm restricted to the sources 
-\(\widehat I\). 
-Then, with high probability,
+and use Algorithm~\ref{alg:cost-support} to select \(\widehat I\). After selecting \(\widehat I\), initialize Algorithm~\ref{alg:ucb-sampling} and run restricted to the sources in \(\widehat I\)
+for \(T\) additional samples. Let \(\widehat p_T\) denote the empirical
+composition of these \(T\) post-exploration samples. Then, with high
+probability,
 \[
 \left\|\widehat p_T-p_G\right\|
 =
@@ -887,7 +883,8 @@ O\!\left(
 \log\frac{1}{\eta c_0}
 \right).
 \]
-and
+
+Moreover,
 \[
 B(\widehat I)
 \le
@@ -900,15 +897,20 @@ B(I)
 \log\frac{2mK}{\delta}
 }.
 \]
-Moreover, if
+
+If
 \[
 \overline B_T
 :=
-\frac{1}{T}\sum_{t=1}^T \ell_{A_t}
+\frac{1}{T}
+\left(
+\sum_{a=1}^m n\ell_a
++
+\sum_{t=1}^T \ell_{A_t}
+\right)
 \]
-denotes the realized average cost, which includes both the initial exploration
-cost and the finite-sample error from the realized source proportions differing
-from their target proportions, then
+denotes the total sampling cost, including the initial exploration phase,
+amortized over the \(T\) post-exploration samples, then
 \[
 \overline B_T
 \le
@@ -1231,14 +1233,14 @@ code, and other artifacts produced with the aid of generative AI.
     supplementary material.]
 
     \item All the training details (e.g., data splits, hyperparameters, how they were chosen).
-    [\textbf{Not Applicable}. No machine-learning models are trained.]
+    [\textbf{Yes}.]
 
     \item A clear definition of the specific measure or statistics and error bars (e.g., with respect to the random seed after running experiments multiple times).
     [\textbf{Yes}. Experimental protocols, metrics, numbers of replications,
     and variability across runs are described in the supplementary material.]
 
     \item A description of the computing infrastructure used. (e.g., type of GPUs, internal cluster, or cloud provider).
-    [\textbf{Yes}. Experiments were run on [INSERT COMPUTING INFORMATION].]
+    [\textbf{Yes}. Experiments were run on an Ubuntu 24.04 VM with 4 vCPUs, 16 GB of RAM, and 30 GB of disk.]
   \end{enumerate}
 
   \item If you are using existing assets (e.g., code, data, models) or curating/releasing new assets, check if you include:
@@ -1559,7 +1561,7 @@ it follows that, with probability at least \(1-\delta\),
 \]
 This completes the proof.
 \end{proof}
-\subsection{Proof of Multi-Dimensional Theorem. }
+\subsection{Proof of Theorem~\ref{thm:multidimensional-guarantee}.}
 
 The proof uses the concept of Upper Confidence Bounds (UCB), which is commonly
 used in multi-armed bandit problems. At every round of sampling, we can measure
