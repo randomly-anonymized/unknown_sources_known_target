@@ -766,7 +766,7 @@ empirical mean \(\widehat\mu_a\).
 \vspace{-6mm}
 \caption{(a) Two sources, share \(65+\) (2{,}000 runs). (b) Sixteen
 sources, ethnic target (250 runs); ETC tuned to \(T=10^5\). (c) Ethnic
-target, offline \(\$108\): mean error at a fixed budget (200 runs; 400
+target, offline \(\$199\): mean error at a fixed budget (200 runs; 400
 for cheap \& discard).}
 \label{fig:main}
 \end{figure*}
@@ -929,58 +929,77 @@ The target population is the \(3{,}294\) adults with diagnosed diabetes in
 the 2023 National Health Interview Survey (NHIS)~\citep{nhis2023}. We
 construct \(m=16\) recruitment sources, e.g., online health-information
 seekers, landline users, Medicaid patients and regional clinics;
-\(\mu_a\) is the group composition of source \(a\), from which recruits are
-simulated (Appendix~\ref{app:exp-data}). Online recruits cost \(\$72\) and
-offline recruits \(\$199\), the medians of~\citet{brogger2020online}. The
-\emph{oracle closed loop} knows every \(\mu_a\) and corrects \(S_t\)
-adaptively. The \emph{oracle open loop} knows every \(\mu_a\) and follows
-the cheapest fixed mixture \(x^\star\) with \(\sum_a x^\star_a\mu_a=p_G\).
-\emph{Explore-then-commit} (ETC) samples uniformly for \(10\%\) of the
-horizon, then follows the cheapest mixture matching \(p_G\) under its
-estimates, with \(\delta=0.05\) (Appendix~\ref{app:exp-impl}).
+\(\mu_a\) is the group composition of source \(a\) in NHIS, and recruits
+are simulated as independent draws from \(\mu_a\), so \(T\) counts
+simulated recruits (Appendix~\ref{app:exp-data}). Online recruits cost
+\(\$72\) and offline recruits \(\$199\), the medians
+of~\citet{brogger2020online}. The \emph{oracle closed loop} knows every
+\(\mu_a\) and corrects \(S_t\) adaptively. The \emph{oracle open loop}
+knows every \(\mu_a\) and computes in advance the cheapest mixture
+\(x^\star\) with \(\sum_a x^\star_a\mu_a=p_G\); it keeps the share of each
+source within \(O(1/T)\) of \(x^\star_a\), but does not react to the
+realized recruits. \emph{Explore-then-commit} (ETC) samples uniformly for
+\(10\%\) of the horizon, then follows the cheapest mixture matching \(p_G\)
+under its estimates, with \(\delta=0.05\) (Appendix~\ref{app:exp-impl}).
 
 \paragraph{One group: feedback gives the \(T^{-1}\) rate.}
 For the share aged \(65+\) (\(40.0\%\) of online and \(78.0\%\) of landline
 recruits, \(47.1\%\) of the target), Algorithm~\ref{alg:sign-based} achieves
 the \(T^{-1}\) rate (Figure~\ref{fig:main}(a)): for \(T\ge10^3\), the
 cumulative imbalance \(\sum_{t \geq T} |S_{t}|\) stays between \(1.4\) and
-\(1.6\). The oracle open loop does not react to the realized recruits, so it
-has the usual \(T^{-1/2}\) rate; its error at \(T=10^5\) is \(84\) times
-larger (Appendix~\ref{app:exp-two}).
+\(1.6\). The oracle open loop has the usual \(T^{-1/2}\) rate; its error at
+\(T=10^5\) is \(84\) times larger. The difference is feedback: under
+Algorithm~\ref{alg:sign-based}, the allocation error and the sampling noise
+have correlation \(-0.9999\), so the adaptive allocation nearly cancels the
+sampling noise (Appendix~\ref{app:exp-two}).
 
 \paragraph{Multiple groups.}
 The ethnic target is \{Hispanic: \(19.0\%\), non-Hispanic Black:
-\(15.5\%\), other: \(65.4\%\)\} (\(K=3\), \(\ell_0=1\), \(c=0.082\) over all
-sixteen sources). Algorithm~\ref{alg:ucb-sampling} learns the \(\mu_a\) and
-approaches the oracle closed loop (Figure~\ref{fig:main}(b)):
-\(\|S_T\|\) is \(10.6\) at \(T=1{,}202\) and \(2.5\) at \(T=10^5\), against
-\(2.0\) for the oracle. The theoretical radius is conservative: \(90\%\) of
-runs reach error \(0.01\) after \(3{,}631\) recruits with radius \(r_a\),
-and after \(1{,}202\) with \(0.3\,r_a\); with no radius, at least \(10\%\) of runs
-stall \(0.03\) or more from \(p_G\). Across targets from \(K=2\)
-(\(c=0.128\)) to \(K=6\) (\(c=0.0014\)), \(c\|S_T\|\) at \(T=10^5\) stays
-in \([0.12,0.42]\), suggesting that the observed imbalance grows roughly
-as \(1/c\) (Appendix~\ref{app:exp-many}).
+\(15.5\%\), other: \(65.4\%\)\} (\(K=3\), \(c=0.082\) over all sixteen
+sources); the groups are mutually exclusive, so \(\ell_0=1\).
+Algorithm~\ref{alg:ucb-sampling} learns the \(\mu_a\) and approaches the
+oracle closed loop (Figure~\ref{fig:main}(b)): \(\|S_T\|\) is \(10.6\) at
+\(T=1{,}202\) and \(2.5\) at \(T=10^5\), against \(2.0\) for the oracle. The
+theoretical radius is conservative: \(90\%\) of runs reach error \(0.01\)
+after \(3{,}631\) recruits with radius \(r_a\), and after \(1{,}202\) with
+\(0.3\,r_a\). Some exploration is needed, however: with no radius, a source
+that looks unhelpful after its first few samples may never be sampled
+enough to correct the estimate, and at least \(10\%\) of runs stall
+\(0.03\) or more from \(p_G\). Finer targets are harder to match. From
+Black/other (\(K=2\), \(c=0.128\)) to ethnicity\(\times\)age (\(K=6\),
+\(c=0.0014\)), \(c\|S_T\|\) at \(T=10^5\) stays in \([0.07,0.25]\) for the
+oracle and in \([0.12,0.42]\) for Algorithm~\ref{alg:ucb-sampling},
+suggesting that the observed imbalance grows roughly as \(1/c\). After
+\(785\) recruits, Algorithm~\ref{alg:ucb-sampling} is \(5.8\) times closer
+to the target than uniform recruitment for ethnicity, but only \(2.7\)
+times for ethnicity\(\times\)age (Appendix~\ref{app:exp-many}).
 
 \paragraph{Cost-aware sampling.}
-Here offline sources cost \(\$108\), within the range
-of~\citet{brogger2020online}. For \(c_0=0.05\), the cheapest support with
-margin at least \(c_0\) is \(I^\star=\{\)online, southern clinics, western
-clinics\(\}\), at \(\$90.70\) per recruit against \(\$108\) for cost-unaware
-sampling. We compare the mean error \(\|\widehat p_T-p_G\|_2\) at a fixed
+For \(c_0=0.05\), the cheapest support with margin at least \(c_0\) is
+\(I^\star=\{\)online, southern clinics, western clinics\(\}\), at
+\(\$137.96\) per recruit against \(\$199\) for cost-unaware sampling; a
+feasible mixture costing \(\$106.14\) exists, but its margin is only
+\(0.004\). We compare the mean error \(\|\widehat p_T-p_G\|_2\) at a fixed
 total budget (Figure~\ref{fig:main}(c)) of Algorithm~\ref{alg:cost-support}
-(\(n=400\), \(c_0=0.05\)) followed by Algorithm~\ref{alg:ucb-sampling} with
-cheap \& discard as in Example~1, which recruits online, pays for every
-contact and keeps recruits whose group quota is open. Up to
-\(\$1\)M, cheap \& discard is more accurate, as
-Algorithm~\ref{alg:cost-support} first spends \(\$662\)k on exploration. From \(\$1.26\)M on,
-Algorithm~\ref{alg:cost-support}\(\to\)\ref{alg:ucb-sampling} is more
-accurate, and from \(\$2\)M by a factor of \(4\) to \(6\)
-(\(1.3\times10^{-4}\) against \(6.4\times10^{-4}\) at \(\$8\)M): in about
+(\(n=400\) samples per source, kept in the sample; \(c_0=0.05\)) followed by
+Algorithm~\ref{alg:ucb-sampling} with cheap \& discard as in Example~1. Cheap
+\& discard recruits online only and pays for every contact. It plans the
+sample size \(N\) that the budget buys on average and keeps a recruit while
+the quota \(\mathrm{round}(Np_G)\) of their group is open, at \(\$100.47\)
+per retained recruit. Exploration costs Algorithm~\ref{alg:cost-support}
+\(\$1.17\)M, and up to \(\$1.6\)M cheap \& discard is more accurate. From
+\(\$2\)M on, Algorithm~\ref{alg:cost-support}\(\to\)\ref{alg:ucb-sampling}
+is more accurate, and from \(\$2.5\)M by a factor of \(2.6\) to \(4.3\)
+(\(1.6\times10^{-4}\) against \(6.6\times10^{-4}\) at \(\$8\)M): in about
 half of the runs, cheap \& discard exhausts the budget before filling the
-Hispanic quota. Algorithm~\ref{alg:ucb-sampling} on all sources is more
-accurate still, paying \(18\%\) more per recruit but needing no exploration
-(Appendix~\ref{app:exp-cost}).
+Hispanic quota, so its \(90\)th percentile error is \(5\) to \(17\) times
+larger. Exploration must be long enough: with \(n=100\) or \(200\),
+\(31\%\) and \(10\%\) of runs select a support whose hull misses \(p_G\),
+and the error stalls. Algorithm~\ref{alg:ucb-sampling} on all sources is
+the most accurate: it pays \(41\%\) more per recruit, but needs no
+exploration. With known means, the closed loop on \(I^\star\) is about as
+accurate as Algorithm~\ref{alg:ucb-sampling} on all sources, so the gap is
+the price of exploration (Appendix~\ref{app:exp-cost}).
 
 Overall, the experiment shows a tradeoff between representation accuracy,
 exploration cost, and recruitment cost. Algorithm~\ref{alg:ucb-sampling} on
@@ -989,13 +1008,12 @@ pays an initial exploration cost but eventually outperforms cheap \& discard
 by restricting recruitment to a cheaper support.
 
 \paragraph{Limitations.}
-With offline sources at \(\$199\),
-Algorithm~\ref{alg:cost-support}\(\to\)\ref{alg:ucb-sampling} overtakes
-cheap \& discard only from about \(\$2\)M. Variables outside the target
-need not match: after matching ethnicity, adults in fair or poor health are
-overrepresented by \(4.1\) points (Appendix~\ref{app:exp-downstream}).
-Variables that affect the endpoint belong in the target, at the price of a
-smaller margin.
+Below about \(\$2\)M, exploration makes
+Algorithm~\ref{alg:cost-support}\(\to\)\ref{alg:ucb-sampling} less accurate
+than cheap \& discard. Variables outside the target need not match: after
+matching ethnicity, adults in fair or poor health are overrepresented by
+\(4.1\) points (Appendix~\ref{app:exp-downstream}). Variables that affect
+the endpoint belong in the target, at the price of a smaller margin.
 
 % %\paragraph{Setup.}
 % We use adults with diagnosed diabetes in the 2023 National Health Interview
@@ -3471,9 +3489,7 @@ seekers and patient-portal users cost \(\$72\) per enrolled participant and
 all other channels \(\$199\): these are the medians per enrolled participant
 for online and offline recruitment in the meta-analysis
 of~\cite{brogger2020online}, whose ranges are \(\$4\)--\(\$251\) and
-\(\$19\)--\(\$839\). In the cost-aware experiments of
-Appendix~\ref{app:exp-cost}, offline channels cost \(\$108\) (ratio \(1.5\))
-unless stated otherwise. The construction models coverage, i.e., whom a channel
+\(\$19\)--\(\$839\). The construction models coverage, i.e., whom a channel
 can reach, and not differential willingness to enrol within a channel.
 
 \begin{table}[!ht]
@@ -3626,7 +3642,7 @@ many sources (Fig.~\ref{fig:main}(b), Table~\ref{tab:many}) & ethnicity & Alg.~\
 marginal goals (Fig.~\ref{fig:app-many}(a)) & marginal goals & as above & \(10^5\) & 250\\
 Black\(\times\)age (Fig.~\ref{fig:app-many}(b)) & Black\(\times\)age & Alg.~\ref{alg:ucb-sampling} (\(\beta=0.3\)), oracle closed loop, naive & \(10^5\) & 250\\
 margin ladder (Fig.~\ref{fig:app-ladder}, \ref{fig:app-many}(c)) & six targets & Alg.~\ref{alg:ucb-sampling} (\(\beta=0.3\)), oracle closed loop, uniform & \(10^5\) & 120\\
-cost, fixed budget (Fig.~\ref{fig:main}(c), \ref{fig:app-budget}) & ethnicity & Alg.~\ref{alg:cost-support}\(\to\)\ref{alg:ucb-sampling}, cheap \& discard, Alg.~\ref{alg:ucb-sampling}, oracle & \(\$0.5\)--\(8\)M & 200\\
+cost, fixed budget (Fig.~\ref{fig:main}(c), \ref{fig:app-budget}) & ethnicity & Alg.~\ref{alg:cost-support}\(\to\)\ref{alg:ucb-sampling}, cheap \& discard, Alg.~\ref{alg:ucb-sampling}, oracle & \(\$1\)--\(8\)M & 200\\
 cost, end to end (Table~\ref{tab:cost}) & ethnicity & Table~\ref{tab:cost} & \(2\times10^4\) & 200\\
 cost, \(c_0\) sweep (Table~\ref{tab:c0}) & ethnicity & Alg.~\ref{alg:cost-support}\(\to\)\ref{alg:ucb-sampling}, \(n\in\{25,100,400\}\) & \(2\times10^4\) & 100\\
 support selection (Table~\ref{tab:selection}) & ethnicity & Alg.~\ref{alg:cost-support}, \(n\in\{25,\dots,1{,}600\}\), 10 cost vectors & -- & 250\\
@@ -3938,29 +3954,28 @@ marginal goals & 0.054 & \(3.9\cdot10^5\) & \(6.2\cdot10^6\) & \(7.0\cdot10^6\) 
 \subsection{Cost-Aware Sampling}
 \label{app:exp-cost}
 
-All cost-aware experiments use the ethnic target, online channels at
-\(\$72\) and offline channels at \(\$108\) (ratio \(1.5\)), except
-Figure~\ref{fig:app-budget}(b), which uses the meta-analysis medians
-(\(\$72\) and \(\$199\)).
+All cost-aware experiments use the ethnic target and the median costs of
+the meta-analysis, \(\$72\) for online and \(\$199\) for offline channels.
 
 \paragraph{Supports.} For \(c_0=0.05\), six three-channel supports have
 margin at least \(c_0\). The cheapest is \(I^\star=\{\)online, clinics South,
 clinics West\(\}\), with weights \((0.48,0.32,0.20)\), margin \(0.052\) and
-cost \(\$90.70\), against \(\$108\) for both the cost-unaware closed loop and
-the myopic rule of Section~\ref{sec:cost}; the other five use offline channels only and cost
-\(\$108\). For \(c_0=0.02\) and \(0.01\), \(31\) and \(51\) supports qualify
-and the cheapest costs \(\$82.23\). The cheapest feasible mixture over all
-channels costs \(\$81.68\); it uses online, portal and Medicaid recruits
-(weights \(0.29\), \(0.44\), \(0.27\)) and has margin \(0.0036\).
-Theorem~\ref{thm:cost-support} does not claim to reach \(\$81.68\): its
+cost \(\$137.96\), against \(\$199\) for the cost-unaware closed loop; the
+other five use offline channels only and cost \(\$199\). For \(c_0=0.02\)
+and \(0.01\), \(31\) and \(51\) supports qualify and the cheapest,
+\(\{\)portal, Spanish-language, clinics South\(\}\) with margin \(0.035\),
+costs \(\$108.08\). The cheapest feasible mixture over all channels costs
+\(\$106.14\); it uses online, portal and Medicaid recruits (weights
+\(0.29\), \(0.44\), \(0.27\)) and has margin \(0.0036\).
+Theorem~\ref{thm:cost-support} does not claim to reach \(\$106.14\): its
 benchmark is the cheapest support with margin at least \(c_0\), so the gap
-to \(\$90.70\) at \(c_0=0.05\) (and to \(\$82.23\) at \(c_0=0.01\)) is the
-price of requiring a well-conditioned support, which in turn makes the
+to \(\$137.96\) at \(c_0=0.05\) (and to \(\$108.08\) at \(c_0\le0.02\)) is
+the price of requiring a well-conditioned support, which in turn makes the
 support identifiable from less data and keeps the representation-error
 constant small.
 
 \paragraph{Error at a fixed budget.} Figure~\ref{fig:app-budget} reports
-\(\|\widehat p_T-p_G\|_2\) after a total budget between \(\$0.5\)M and
+\(\|\widehat p_T-p_G\|_2\) after a total budget between \(\$1\)M and
 \(\$8\)M, averaged over 200 runs (400 for cheap \& discard); for the adaptive
 policies, the sample consists of the recruits bought before the budget is
 exceeded. Cheap \& discard follows Example~1: it recruits from one cheap
@@ -3971,51 +3986,53 @@ its channel (as in Example~1), keeps each recruit while the quota
 \(\mathrm{round}(Np_G)\) of their group is open, pays for every contact, and
 stops when all quotas are full or the budget is spent. With the online
 channel, \(f=1.40\) (the Hispanic quota binds), so cheap \& discard pays
-\(\$100.47\) per retained recruit on average and retains about as many
-recruits as the adaptive policies buy (e.g., \(15{,}800\) against
-\(16{,}900\) for Algorithm~\ref{alg:cost-support}\(\to\)\ref{alg:ucb-sampling}
-at \(\$1.6\)M). Its quotas are complete in \(46\)--\(58\%\) of runs at every
+\(\$100.47\) per retained recruit on average and retains more recruits than
+the adaptive policies buy (e.g., \(20{,}000\) against \(12{,}800\) for
+Algorithm~\ref{alg:cost-support}\(\to\)\ref{alg:ucb-sampling} at
+\(\$2\)M). Its quotas are complete in \(46\)--\(55\%\) of runs at every
 budget. In the other runs the budget runs out before the Hispanic quota is
 filled, and these runs determine its mean error. The portal channel gives
 nearly the same curve.
 
-In panel (a), Algorithm~\ref{alg:cost-support}\(\to\)\ref{alg:ucb-sampling}
-with \(n=400\) and \(c_0=0.05\) spends its first \(6{,}400\) recruits
-(\(\$662\)k) on exploration; until then its error is that of uniform
-recruitment, and up to \(\$1\)M cheap \& discard is more accurate
-(\(1.9\times10^{-3}\) against \(4.0\times10^{-3}\) at \(\$1\)M). From
-\(\$1.26\)M on, Algorithm~\ref{alg:cost-support}\(\to\)\ref{alg:ucb-sampling}
-is more accurate (\(5.5\times10^{-4}\) against \(1.4\times10^{-3}\)), and
-from \(\$2\)M by a factor of \(4\) to \(6\) (\(1.3\times10^{-4}\) against
-\(6.4\times10^{-4}\) at \(\$8\)M). The two error distributions differ in
-shape: cheap \& discard is nearly exact when its quotas are complete, and
-these are about half of the runs, so its median error is smaller than that
-of Algorithm~\ref{alg:cost-support}\(\to\)\ref{alg:ucb-sampling} at some
+Algorithm~\ref{alg:cost-support}\(\to\)\ref{alg:ucb-sampling} with
+\(n=400\) and \(c_0=0.05\) spends its first \(6{,}400\) recruits
+(\(\$1.17\)M) on exploration; until then its error is that of uniform
+recruitment, and up to \(\$1.6\)M cheap \& discard is more accurate
+(\(1.4\times10^{-3}\) against \(6.7\times10^{-3}\) at \(\$1.6\)M). From
+\(\$2\)M on, Algorithm~\ref{alg:cost-support}\(\to\)\ref{alg:ucb-sampling}
+is more accurate (\(7.6\times10^{-4}\) against \(1.1\times10^{-3}\)), and
+from \(\$2.5\)M by a factor of \(2.6\) to \(4.3\) (\(1.6\times10^{-4}\)
+against \(6.6\times10^{-4}\) at \(\$8\)M). The two error distributions
+differ in shape: cheap \& discard is nearly exact when its quotas are
+complete, and these are about half of the runs, so its median error is
+smaller than that of
+Algorithm~\ref{alg:cost-support}\(\to\)\ref{alg:ucb-sampling} at some
 budgets and larger at others, while its \(90\)th percentile at \(\$2\)M and
-above (\(2\)--\(4\times10^{-3}\)) is \(10\) to \(22\) times that of
+above (\(2\)--\(4\times10^{-3}\)) is \(5\) to \(17\) times that of
 Algorithm~\ref{alg:cost-support}\(\to\)\ref{alg:ucb-sampling}. With
 \(n=200\), \(10\%\) of runs select a support whose true hull misses \(p_G\);
-this variant overtakes cheap \& discard from about \(\$0.8\)M but then
-stalls at its level (\(7.2\times10^{-4}\) at \(\$8\)M). With \(n=100\),
-\(31\%\) of runs select such a support and the error stalls at
-\(4.4\times10^{-3}\). Algorithm~\ref{alg:cost-support} returned
-\textsc{Fail} in at most \(1.5\%\) of runs. Algorithm~\ref{alg:ucb-sampling}
-on all channels, which ignores costs, is the most accurate policy that
-does not know the means at every budget (\(2.7\times10^{-5}\) at \(\$8\)M):
-it pays about \(\$107\) per recruit, \(18\%\) more than on \(I^\star\), but
-has no exploration phase, cannot select a wrong support, and works with the
-larger margin of the full hull (\(0.082\) against \(0.052\)). The oracle
-closed loop on \(I^\star\) shows what cost-aware sampling would achieve
-with known means. With the median costs (panel (b)), the exploration phase
-costs \(\$1.2\)M and Algorithm~\ref{alg:cost-support}\(\to\)\ref{alg:ucb-sampling}
-overtakes cheap \& discard only from about \(\$2\)M, by a factor of
-\(3\) to \(4\) from \(\$2.5\)M.
+this variant is about as accurate as cheap \& discard and stalls at
+\(7.5\times10^{-4}\). With \(n=100\), \(31\%\) of runs select such a support
+and the error stalls at \(4.6\times10^{-3}\). Algorithm~\ref{alg:cost-support}
+returned \textsc{Fail} in at most \(1.5\%\) of runs.
+Algorithm~\ref{alg:ucb-sampling} on all channels, which ignores costs, is
+the most accurate policy that does not know the means at every budget
+(\(4.4\times10^{-5}\) at \(\$8\)M): it pays about \(\$195\) per recruit,
+\(41\%\) more than on \(I^\star\), but has no exploration phase, cannot
+select a wrong support, and works with the larger margin of the full hull
+(\(0.082\) against \(0.052\)). The oracle closed loop on \(I^\star\), which
+knows the means, is about as accurate as Algorithm~\ref{alg:ucb-sampling}
+on all channels (\(5.0\times10^{-5}\) at \(\$8\)M): the lower cost per
+recruit compensates for the smaller margin, and what separates
+Algorithm~\ref{alg:cost-support}\(\to\)\ref{alg:ucb-sampling} from it is the
+cost of exploration and of selecting a support from estimates.
 
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=\textwidth]{figA_budget}
+\includegraphics[width=0.6\textwidth]{figA_budget}
 \caption{Error \(\|\widehat p_T-p_G\|_2\) at a fixed total budget for the
-ethnic target (mean over 200 runs; 400 for cheap \& discard).
+ethnic target, online channels at \(\$72\) and offline channels at
+\(\$199\) (mean over 200 runs; 400 for cheap \& discard).
 Algorithm~\ref{alg:cost-support} uses \(c_0=0.05\) and \(n\) exploration
 samples per channel; Algorithm~\ref{alg:ucb-sampling} uses radius
 \(0.3\,r_a\). Cheap \& discard is the procedure of Example~1 on the online
@@ -4026,14 +4043,15 @@ samples per channel; Algorithm~\ref{alg:ucb-sampling} uses radius
 \paragraph{End to end at a fixed horizon.} Table~\ref{tab:cost} compares
 policies after \(T=2\times10^4\) recruits. Among policies that know the
 means, the closed loop on \(I^\star\) is the cheapest way to reach an error
-of order \(10^{-4}\); at this cost ratio the myopic cost-ratio rule saves
-nothing, and its cost and error coincide with those of the cost-unaware
-oracle. The oracle open loop on the cheapest mixture is cheaper still, but
-its error is of order \(T^{-1/2}\). With learnt means,
+of order \(10^{-4}\). The myopic cost-ratio rule reaches a similar error at
+\(\$153.68\) per recruit: \(23\%\) less than the cost-unaware oracle, but
+\(11\%\) more than the closed loop on \(I^\star\). The oracle open loop on
+the cheapest mixture is cheaper still, but its error is of order
+\(T^{-1/2}\). With learnt means,
 Algorithm~\ref{alg:cost-support}\(\to\)\ref{alg:ucb-sampling} with
-\(n=100\) is \(14\%\) cheaper than Algorithm~\ref{alg:ucb-sampling} on all
+\(n=100\) is \(26\%\) cheaper than Algorithm~\ref{alg:ucb-sampling} on all
 channels, but its mean error is \(3.6\times10^{-3}\), while its median is
-\(2.6\times10^{-4}\): most runs converge, and the runs with an infeasible
+\(2.4\times10^{-4}\): most runs converge, and the runs with an infeasible
 support stall.
 
 \begin{table}[!ht]
@@ -4049,14 +4067,14 @@ for \(n=100\) and in none for \(n=25\).}
 policy & means & \(\|\widehat p_T-p_G\|_2\) & \(\$\)/recruit\\
 \hline
 online only & -- & \(9.0\cdot10^{-2}\) & 72.00\\
-uniform & -- & \(3.5\cdot10^{-2}\) & 103.50\\
-oracle open loop on the cheapest mixture & known & \(4.2\cdot10^{-3}\) & 81.68\\
-oracle closed loop on \(I^\star\) & known & \(1.4\cdot10^{-4}\) & 90.74\\
-myopic cost-ratio rule & known & \(9.2\cdot10^{-5}\) & 108.00\\
-oracle closed loop on all channels & known & \(9.2\cdot10^{-5}\) & 108.00\\
-Alg.~\ref{alg:cost-support}\(\to\)\ref{alg:ucb-sampling}, \(n=25\) & learnt & \(1.9\cdot10^{-2}\) & 89.75\\
-Alg.~\ref{alg:cost-support}\(\to\)\ref{alg:ucb-sampling}, \(n=100\) & learnt & \(3.6\cdot10^{-3}\) & 92.35\\
-Algorithm~\ref{alg:ucb-sampling} on all channels & learnt & \(1.1\cdot10^{-4}\) & 106.88\\
+uniform & -- & \(3.5\cdot10^{-2}\) & 183.13\\
+oracle open loop on the cheapest mixture & known & \(4.2\cdot10^{-3}\) & 106.14\\
+oracle closed loop on \(I^\star\) & known & \(1.4\cdot10^{-4}\) & 138.12\\
+myopic cost-ratio rule & known & \(1.1\cdot10^{-4}\) & 153.68\\
+oracle closed loop on all channels & known & \(9.2\cdot10^{-5}\) & 198.99\\
+Alg.~\ref{alg:cost-support}\(\to\)\ref{alg:ucb-sampling}, \(n=25\) & learnt & \(1.9\cdot10^{-2}\) & 134.75\\
+Alg.~\ref{alg:cost-support}\(\to\)\ref{alg:ucb-sampling}, \(n=100\) & learnt & \(3.6\cdot10^{-3}\) & 143.79\\
+Algorithm~\ref{alg:ucb-sampling} on all channels & learnt & \(1.1\cdot10^{-4}\) & 195.03\\
 \hline
 \end{tabular}
 \end{table}
@@ -4080,14 +4098,14 @@ Figure~\ref{fig:app-cost}(a,b) run Algorithm~\ref{alg:cost-support} alone
 support whose true hull does not contain \(p_G\): then
 Algorithm~\ref{alg:ucb-sampling} cannot reach the target, and the error
 stalls at the distance from \(p_G\) to that hull. This happens in
-\(58\%\) of runs at \(n=25\) and \(c_0=0.05\), and in none at
+\(59\%\) of runs at \(n=25\) and \(c_0=0.05\), and in none at
 \(n=1{,}600\). The same holds when the costs are drawn log-uniformly from
 the meta-analysis ranges (last column). The guarantee of
 Theorem~\ref{thm:cost-support}, \(c(\widehat I)\ge c_0/2\), holds with
 probability \(0.98\) at \(n=800\), whereas the theorem asks for
 \(n\ge72{,}577\) at \(c_0=0.05\) (and \(453{,}605\) and \(1{,}814{,}420\) at
 \(c_0=0.02\) and \(0.01\)). Its cost bound at \(n=1{,}600\) is
-\(\$546\) per recruit, vacuous at these budgets. Exact recovery of
+\(\$1{,}005\) per recruit, vacuous at these budgets. Exact recovery of
 \(I^\star\) is rare (at most \(21\%\) of runs for \(c_0=0.05\)). This is
 consistent with the theorem, which allows a support with
 \(c_0/2\le c(I)<c_0\) that is cheaper than \(I^\star\): for \(c_0=0.05\)
@@ -4108,11 +4126,11 @@ cost vectors drawn log-uniformly from the meta-analysis ranges.}
  & \multicolumn{2}{c|}{\(c_0=0.01\)} & \multicolumn{2}{c|}{\(c_0=0.02\)} & \multicolumn{2}{c|}{\(c_0=0.05\)} & \(c_0=0.05\)\\
 \(n\) & infeas. & \(c(\widehat I)\ge\frac{c_0}{2}\) & infeas. & \(c(\widehat I)\ge\frac{c_0}{2}\) & infeas. & \(c(\widehat I)\ge\frac{c_0}{2}\) & 10 cost vectors\\
 \hline
-25 & 0.64 & 0.31 & 0.64 & 0.26 & 0.58 & 0.24 & 0.55\\
-50 & 0.65 & 0.28 & 0.58 & 0.27 & 0.42 & 0.36 & 0.44\\
-100 & 0.52 & 0.39 & 0.42 & 0.38 & 0.31 & 0.47 & 0.31\\
-200 & 0.40 & 0.52 & 0.28 & 0.54 & 0.10 & 0.72 & 0.11\\
-400 & 0.17 & 0.72 & 0.09 & 0.70 & 0.02 & 0.88 & 0.03\\
+25 & 0.64 & 0.30 & 0.64 & 0.26 & 0.59 & 0.23 & 0.55\\
+50 & 0.65 & 0.28 & 0.58 & 0.27 & 0.42 & 0.35 & 0.44\\
+100 & 0.52 & 0.39 & 0.41 & 0.38 & 0.32 & 0.46 & 0.31\\
+200 & 0.40 & 0.52 & 0.28 & 0.54 & 0.10 & 0.71 & 0.11\\
+400 & 0.17 & 0.72 & 0.09 & 0.70 & 0.02 & 0.91 & 0.03\\
 800 & 0.10 & 0.80 & 0.01 & 0.85 & 0.00 & 0.98 & 0.00\\
 1{,}600 & 0.06 & 0.84 & 0.00 & 0.92 & 0.00 & 1.00 & 0.00\\
 \hline
@@ -4122,12 +4140,12 @@ cost vectors drawn log-uniformly from the meta-analysis ranges.}
 \paragraph{The margin threshold \(c_0\).} Table~\ref{tab:c0} and
 Figure~\ref{fig:app-cost}(c) sweep \(c_0\) and \(n\) at
 \(T=2\times10^4\). A larger \(c_0\) buys accuracy with cost: for
-\(n=100\), the cost rises from \(\$83.5\) at \(c_0=0.01\) (error \(0.013\))
-to \(\$106.5\) at \(c_0=0.10\) (error \(0.0012\)). At \(c_0=0.10\), \(36\%\)
+\(n=100\), the cost rises from \(\$112.7\) at \(c_0=0.01\) (error \(0.013\))
+to \(\$193.7\) at \(c_0=0.10\) (error \(0.0010\)). At \(c_0=0.10\), \(36\%\)
 of runs find no admissible support, so Algorithm~\ref{alg:cost-support}
 returns \textsc{Fail} and they use all channels. A longer exploration
 (\(n=400\), \(32\%\) of the sample) lowers the error at every \(c_0\), by a
-factor of \(3.5\) to \(19\) relative to \(n=100\), but for small \(c_0\) it
+factor of \(3.5\) to \(20\) relative to \(n=100\), but for small \(c_0\) it
 raises the cost, because exploration is spread uniformly over all channels.
 
 \begin{table}[!ht]
@@ -4142,10 +4160,10 @@ Algorithm~\ref{alg:cost-support} returns \textsc{Fail}.}
  & \multicolumn{3}{c|}{\(n=25\)} & \multicolumn{3}{c|}{\(n=100\)} & \multicolumn{3}{c}{\(n=400\)}\\
 \(c_0\) & error & \(\$\) & \textsc{Fail} & error & \(\$\) & \textsc{Fail} & error & \(\$\) & \textsc{Fail}\\
 \hline
-0.01 & 0.0231 & 83.6 & 0.01 & 0.0130 & 83.5 & 0.00 & 0.0037 & 89.1 & 0.00\\
-0.02 & 0.0214 & 83.9 & 0.01 & 0.0086 & 84.8 & 0.00 & 0.0019 & 89.8 & 0.00\\
-0.05 & 0.0174 & 89.6 & 0.01 & 0.0048 & 92.8 & 0.00 & 0.0003 & 94.4 & 0.01\\
-0.10 & 0.0125 & 100.7 & 0.20 & 0.0012 & 106.5 & 0.36 & 0.0001 & 106.5 & 0.36\\
+0.01 & 0.0231 & 113.4 & 0.01 & 0.0130 & 112.7 & 0.00 & 0.0037 & 132.2 & 0.00\\
+0.02 & 0.0214 & 114.8 & 0.01 & 0.0086 & 117.2 & 0.00 & 0.0019 & 134.9 & 0.00\\
+0.05 & 0.0175 & 134.8 & 0.01 & 0.0050 & 145.5 & 0.00 & 0.0003 & 151.1 & 0.01\\
+0.10 & 0.0111 & 173.1 & 0.20 & 0.0010 & 193.7 & 0.36 & 0.0001 & 193.8 & 0.36\\
 \hline
 \end{tabular}
 \end{table}

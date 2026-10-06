@@ -106,8 +106,8 @@ def fig_main():
             "Thm. 1 (proof constants)"]
     fig.legend([hl[k] for k in keys], keys, loc="upper center", ncol=5, bbox_to_anchor=(0.5, 1.0),
                columnspacing=1.4, handlelength=2.4, fontsize=5.9)
-    # (c) cost-aware sampling: error at a fixed total budget (offline cost $108)
-    plot_budget(ax[2], 1.5, ["ALG3+2(n=400,c0=0.05)", "CHEAP-DISCARD(ONLINE)", "ALG2(beta=0.3)", "ORACLE-CL(I*)"],
+    # (c) cost-aware sampling: error at a fixed total budget (median costs, offline $199)
+    plot_budget(ax[2], ["ALG3+2(n=400,c0=0.05)", "CHEAP-DISCARD(ONLINE)", "ALG2(beta=0.3)", "ORACLE-CL(I*)"],
                 labels={"ALG3+2(n=400,c0=0.05)": "Alg. 3 $\\to$ 2", "CHEAP-DISCARD(ONLINE)": "cheap & discard",
                         "ALG2(beta=0.3)": "Alg. 2, all", "ORACLE-CL(I*)": "oracle on $I^\\star$"})
     ax[2].set_title("(c) 16 channels; ethnic target, fixed budget", pad=3)
@@ -127,9 +127,8 @@ BUDGET_STYLE = {
 }
 
 
-def plot_budget(ax, ratio, policies, labels=None):
+def plot_budget(ax, policies, labels=None):
     d = pd.read_csv(f"{RES}/E3_budget.csv")
-    d = d[np.isclose(d.cost_ratio, ratio)]
     for p in policies:
         g = d[d.policy == p].sort_values("budget")
         st = dict(BUDGET_STYLE[p]); lab = st.pop("label")
@@ -137,9 +136,9 @@ def plot_budget(ax, ratio, policies, labels=None):
         ax.loglog(g.budget, g.err_mean, label=lab, **st)
     ax.set_xlabel("total budget (\\$)", labelpad=1)
     ax.set_ylabel("$\\|\\widehat p_T-p_G\\|_2$", labelpad=1)
-    ax.set_xlim(4.6e5, 8.7e6)
-    ticks = [5e5, 1e6, 2e6, 4e6, 8e6]
-    ax.set_xticks(ticks); ax.set_xticklabels(["0.5M", "1M", "2M", "4M", "8M"])
+    ax.set_xlim(0.95e6, 8.4e6)
+    ticks = [1e6, 2e6, 4e6, 8e6]
+    ax.set_xticks(ticks); ax.set_xticklabels(["1M", "2M", "4M", "8M"])
     ax.xaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
 
 
@@ -165,16 +164,12 @@ def fig_ladder():
 
 
 def fig_budget():
-    fig, ax = plt.subplots(1, 2, figsize=(FULL_W, 2.3))
-    plot_budget(ax[0], 1.5, ["ALG3+2(n=400,c0=0.05)", "ALG3+2(n=200,c0=0.05)", "ALG3+2(n=100,c0=0.05)",
-                             "CHEAP-DISCARD(ONLINE)", "CHEAP-DISCARD(PORTAL)", "ALG2(beta=0.3)", "ORACLE-CL(I*)"])
-    ax[0].set_title("(a) offline cost \\$108 (ratio 1.5)")
-    plot_budget(ax[1], 2.764, ["ALG3+2(n=400,c0=0.05)", "CHEAP-DISCARD(ONLINE)", "ALG2(beta=0.3)", "ORACLE-CL(I*)"])
-    ax[1].set_title("(b) offline cost \\$199 (meta-analysis medians, ratio 2.76)")
-    ax[0].legend(loc="lower left", fontsize=5.4)
-    for a in ax:
-        a.set_ylim(4e-7, 0.08)
-    fig.tight_layout(w_pad=1.0); fig.savefig(f"{OUT}/figA_budget.pdf"); plt.close(fig)
+    fig, ax = plt.subplots(1, 1, figsize=(3.6, 2.4))
+    plot_budget(ax, ["ALG3+2(n=400,c0=0.05)", "ALG3+2(n=200,c0=0.05)", "ALG3+2(n=100,c0=0.05)",
+                     "CHEAP-DISCARD(ONLINE)", "CHEAP-DISCARD(PORTAL)", "ALG2(beta=0.3)", "ORACLE-CL(I*)"])
+    ax.legend(loc="lower left", fontsize=5.4)
+    ax.set_ylim(4e-7, 0.08)
+    fig.tight_layout(); fig.savefig(f"{OUT}/figA_budget.pdf"); plt.close(fig)
 
 
 # ------------------------------------------------------------------ appendix figures
@@ -302,7 +297,9 @@ def fig_cost():
         if n == 100:                              # c0 increases left to right on every curve
             for _, r in g.iterrows():
                 ax[2].annotate(f"$c_0$={r.c0:g}", (r.cost_per_sample, r.err_l2), textcoords="offset points",
-                               xytext=(2, 3), fontsize=4.8, color=SEQ[j + 1])
+                               xytext=(-3, -2) if r.c0 == 0.01 else (0, -8),
+                               ha="right" if r.c0 == 0.01 else "center", fontsize=4.8, color=SEQ[j + 1])
+    ax[2].set_xlim(98, 202)
     ax[2].set_xlabel("\\$ per recruit"); ax[2].set_ylabel("$\\|\\widehat p_T-p_G\\|_2$ at $T=2\\cdot 10^4$")
     ax[2].set_title("(c) margin threshold $c_0$")
     ax[2].legend(loc="lower left")

@@ -2,8 +2,8 @@
 e33 (c0 trade-off), e34 (myopic-rule counterexample, Example 2), e35 (error at a fixed budget against
 cheap & discard), refs (cost references / break-even table).
 
-The cost experiments use online recruits at $72 and offline recruits at $72 * COST_RATIO (default 1.5, i.e.
-$108; set COST_RATIO=2.764 for the meta-analysis medians $72 / $199)."""
+The cost experiments use the meta-analysis medians: online recruits at $72 and offline recruits at
+OFFLINE_COST (default $199; can be overridden through the environment variable of the same name)."""
 import json, os, sys
 import numpy as np, pandas as pd
 
@@ -22,13 +22,13 @@ N_GRID = [25, 50, 100, 200, 400, 800, 1600]
 C0_GRID = [0.01, 0.02, 0.05, 0.10]
 R_SEL, T_E2E, R_E2E = 250, 20_000, 200
 COST_RANGE = {72.0: (3.9, 251.2), 199.0: (19.1, 839.0)}     # JMIR 2020 meta-analysis ranges
-COST_RATIO = float(os.environ.get("COST_RATIO", 1.5))         # offline / online cost in the cost experiments
-BUDGETS = np.geomspace(5e5, 8e6, 13)                           # e35: total budgets ($)
+OFFLINE_COST = float(os.environ.get("OFFLINE_COST", 199.0))    # offline cost per recruit in the cost experiments
+BUDGETS = np.geomspace(1e6, 8e6, 10)                           # e35: total budgets ($)
 
 
 def scenario():
     sc = json.load(open(os.path.join(SC, SID + ".json")))
-    cost = np.where(np.array(sc['cost']) == 72.0, 72.0, 72.0 * COST_RATIO)
+    cost = np.where(np.array(sc['cost']) == 72.0, 72.0, OFFLINE_COST)
     env = categorical_env(np.array(sc['mu']), np.array(sc['p_G']), cost,
                           names=sc['arms'], label_names=sc['labels'])
     env.c_margin = sc['margin_c']
@@ -217,8 +217,8 @@ def stage_e35(key):
                              err_mean=np.nanmean(err[:, b_i]), err_median=np.nanmedian(err[:, b_i]),
                              err_q90=np.nanquantile(err[:, b_i], .9), n_mean=np.nanmean(Tb[:, b_i]),
                              complete=np.nan, spent_mean=np.nan, fallback=fb))
-    df = pd.DataFrame(rows); df.insert(0, "cost_ratio", COST_RATIO)
-    df.to_csv(os.path.join(out, f"{COST_RATIO:g}_{key}.csv"), index=False)
+    df = pd.DataFrame(rows); df.insert(0, "offline_cost", OFFLINE_COST)
+    df.to_csv(os.path.join(out, f"{OFFLINE_COST:g}_{key}.csv"), index=False)
     print(df.to_string(index=False, float_format=lambda v: f"{v:.4g}"))
 
 
@@ -226,7 +226,7 @@ def stage_e35_merge():
     import glob
     df = pd.concat([pd.read_csv(f) for f in sorted(glob.glob(os.path.join(RES, "E3_budget_parts", "*.csv")))])
     df.to_csv(f"{RES}/E3_budget.csv", index=False)
-    print(df.pivot_table(index=["cost_ratio", "policy"], columns="budget", values="err_mean").to_string(
+    print(df.pivot_table(index=["offline_cost", "policy"], columns="budget", values="err_mean").to_string(
         float_format=lambda v: f"{v:.1e}"))
 
 
