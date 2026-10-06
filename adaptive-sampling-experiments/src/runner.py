@@ -163,33 +163,3 @@ def run_budget(env, policy, budgets, R, seed, T_cap):
         if (j >= nb).all():
             break
     return err, Tb
-
-
-def cheap_and_discard_budget(mu_cheap, p_G, ell, budgets, R, seed):
-    """Cheap & discard as in Example 1 of the manuscript, under a total budget b. The planned sample
-    size is the one the budget buys on average, N = floor((b / ell) / f) with f = max_k p_G,k / mu_k
-    (Example 1's arithmetic, using the composition of the cheap channel). Recruits are drawn from the
-    cheap channel one at a time and kept while their group's quota round(N p_G) is open; the procedure
-    stops when all quotas are full or the budget is spent. Every contact is paid.
-    Returns (err (R, nb), retained (R, nb), spent (R, nb), completed (R, nb))."""
-    rng = np.random.default_rng(seed)
-    mu_cheap = np.asarray(mu_cheap, float); p_G = np.asarray(p_G, float)
-    K = len(p_G); f = float(np.max(p_G / mu_cheap))
-    cum = np.cumsum(mu_cheap); cum[-1] = 1.0
-    nb = len(budgets)
-    err = np.zeros((R, nb)); kept_n = np.zeros((R, nb)); spent = np.zeros((R, nb)); completed = np.zeros((R, nb), bool)
-    for b_i, b in enumerate(budgets):
-        M = int(b // ell)
-        q = largest_remainder(p_G, int(M / f))
-        strata = np.searchsorted(cum, rng.random((R, M)), side="right").clip(0, K - 1)
-        onehot = np.zeros((R, M, K), dtype=np.int32)
-        np.put_along_axis(onehot, strata[:, :, None], 1, axis=2)
-        run_counts = np.cumsum(onehot, axis=1)                      # (R, M, K) counts after each contact
-        full = (run_counts >= q[None, None, :]).all(axis=2)
-        done = full.any(axis=1)
-        stop = np.where(done, np.argmax(full, axis=1) + 1, M)        # contacts actually paid
-        kept = np.minimum(run_counts[np.arange(R), stop - 1], q[None, :])
-        n = kept.sum(axis=1)
-        err[:, b_i] = np.linalg.norm(kept / np.maximum(n, 1)[:, None] - p_G, axis=1)
-        kept_n[:, b_i] = n; spent[:, b_i] = stop * ell; completed[:, b_i] = done
-    return err, kept_n, spent, completed

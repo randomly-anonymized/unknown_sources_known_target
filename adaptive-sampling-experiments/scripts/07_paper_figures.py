@@ -107,8 +107,8 @@ def fig_main():
     fig.legend([hl[k] for k in keys], keys, loc="upper center", ncol=5, bbox_to_anchor=(0.5, 1.0),
                columnspacing=1.4, handlelength=2.4, fontsize=5.9)
     # (c) cost-aware sampling: error at a fixed total budget (median costs, offline $199)
-    plot_budget(ax[2], ["ALG3+2(n=400,c0=0.05)", "CHEAP-DISCARD(ONLINE)", "ALG2(beta=0.3)", "ORACLE-CL(I*)"],
-                labels={"ALG3+2(n=400,c0=0.05)": "Alg. 3 $\\to$ 2", "CHEAP-DISCARD(ONLINE)": "cheap & discard",
+    plot_budget(ax[2], ["ALG3+2(n=400,c0=0.05)", "MYOPIC-COST(oracle)", "ALG2(beta=0.3)", "ORACLE-CL(I*)"],
+                labels={"ALG3+2(n=400,c0=0.05)": "Alg. 3 $\\to$ 2", "MYOPIC-COST(oracle)": "myopic rule",
                         "ALG2(beta=0.3)": "Alg. 2, all", "ORACLE-CL(I*)": "oracle on $I^\\star$"})
     ax[2].set_title("(c) 16 channels; ethnic target, fixed budget", pad=3)
     ax[2].set_ylim(3e-7, 0.08)
@@ -120,8 +120,8 @@ BUDGET_STYLE = {
     "ALG3+2(n=400,c0=0.05)": dict(label="Alg. 3 $\\to$ Alg. 2 ($n=400$)", color="#000000", lw=1.7),
     "ALG3+2(n=200,c0=0.05)": dict(label="Alg. 3 $\\to$ Alg. 2 ($n=200$)", color="#555555", lw=1.0, ls="--"),
     "ALG3+2(n=100,c0=0.05)": dict(label="Alg. 3 $\\to$ Alg. 2 ($n=100$)", color="#999999", lw=1.0, ls=":"),
-    "CHEAP-DISCARD(ONLINE)": dict(label="cheap & discard (online)", color="#D55E00", lw=1.3, marker="s", ms=2.2),
-    "CHEAP-DISCARD(PORTAL)": dict(label="cheap & discard (portal)", color="#E69F00", lw=1.0, ls="--", marker="s", ms=2.0),
+    "MYOPIC-COST(oracle)": dict(label="myopic rule, true means", color="#D55E00", lw=1.2, marker="s", ms=2.0),
+    "MYOPIC-COST": dict(label="myopic rule, estimated means", color="#E69F00", lw=1.0, ls="--", marker="s", ms=1.8),
     "ALG2(beta=0.3)": dict(label="Alg. 2, all channels", color="#555555", lw=1.0, ls="-."),
     "ORACLE-CL(I*)": dict(label="oracle closed loop on $I^\\star$", color="#0072B2", lw=1.0),
 }
@@ -166,7 +166,7 @@ def fig_ladder():
 def fig_budget():
     fig, ax = plt.subplots(1, 1, figsize=(3.6, 2.4))
     plot_budget(ax, ["ALG3+2(n=400,c0=0.05)", "ALG3+2(n=200,c0=0.05)", "ALG3+2(n=100,c0=0.05)",
-                     "CHEAP-DISCARD(ONLINE)", "CHEAP-DISCARD(PORTAL)", "ALG2(beta=0.3)", "ORACLE-CL(I*)"])
+                     "MYOPIC-COST(oracle)", "MYOPIC-COST", "ALG2(beta=0.3)", "ORACLE-CL(I*)"])
     ax.legend(loc="lower left", fontsize=5.4)
     ax.set_ylim(4e-7, 0.08)
     fig.tight_layout(); fig.savefig(f"{OUT}/figA_budget.pdf"); plt.close(fig)
