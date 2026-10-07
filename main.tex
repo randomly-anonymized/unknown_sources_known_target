@@ -975,11 +975,20 @@ For the share aged \(65+\) (\(40.0\%\) of online and \(78.0\%\) of landline
 recruits, \(47.1\%\) of the target), Algorithm~\ref{alg:sign-based} achieves
 the \(T^{-1}\) rate (Figure~\ref{fig:main}(a)): for \(T\ge10^3\), the
 cumulative imbalance \(\sum_{t \geq T} |S_{t}|\) stays between \(1.4\) and
-\(1.6\). The oracle open loop has the usual \(T^{-1/2}\) rate; its error at
+\(1.6\); at \(T=10^5\), \(E|S_T|=1.43\) is \(13\) times the lower bound of
+Proposition~\ref{prop:one-dimensional-lower-bound} and \(10\) times smaller
+than the value implied by the proof of
+Theorem~\ref{thm:one-dimensional-guarantee}. The oracle open loop has the
+usual \(T^{-1/2}\) rate; its error at
 \(T=10^5\) is \(84\) times larger. The difference is feedback: under
 Algorithm~\ref{alg:sign-based}, the allocation error and the sampling noise
 have correlation \(-0.9999\), so the adaptive allocation nearly cancels the
-sampling noise (Appendix~\ref{app:exp-two}).
+sampling noise (Appendix~\ref{app:exp-two}). The rule is robust: if
+decisions are revised only every \(50\) recruits or labels arrive \(50\)
+rounds late, \(E|S_T|\) grows by about \(6\) but the slope stays close to
+\(-1\); if both channels drift by \(5\) percentage points over the horizon,
+the error at \(T=10^5\) is still \(2.6\times10^{-4}\), whereas the oracle
+open loop and ETC end about \(1.6\) points from the target.
 
 \paragraph{Multiple groups.}
 The diagnosed diabetes target is \{Hispanic: \(19.0\%\), non-Hispanic Black:
@@ -1000,7 +1009,10 @@ oracle and in \([0.12,0.42]\) for Algorithm~\ref{alg:ucb-sampling},
 suggesting that the observed imbalance grows roughly as \(1/c\). After
 \(785\) recruits, Algorithm~\ref{alg:ucb-sampling} is \(5.8\) times closer
 to the target than uniform recruitment for this target, but only \(2.7\)
-times for ethnicity\(\times\)age (Appendix~\ref{app:exp-many}).
+times for ethnicity\(\times\)age. For marginal goals stated per attribute
+(Black, Hispanic, \(65+\), female; \(\ell_0=3\)),
+Algorithm~\ref{alg:ucb-sampling} ends within \(15\%\) of the oracle closed
+loop (Appendix~\ref{app:exp-many}).
 
 \paragraph{Cost-aware sampling.}
 We use the Black/other target (\(15.5\%\) Black; \(K=2\), \(c=0.128\) over
@@ -1027,7 +1039,11 @@ since the cheaper support has a smaller margin (\(0.023\) against
 \(8\times10^{-6}\), and one run selects a support that misses \(p_G\). With
 a budget of \(\$16\)M, the greedy rule is \(2.3\) times as accurate, while
 Algorithm~\ref{alg:cost-support}\(\to\)\ref{alg:ucb-sampling} recruits
-\(1.7\) times as many participants (Appendix~\ref{app:exp-cost}).
+\(1.7\) times as many participants. The exploration length matters: with
+\(n=400\) or \(800\), \(12\%\) and \(4\%\) of runs select a support that
+cannot reach \(p_G\), and the error stalls. Theorem~\ref{thm:cost-support}
+asks for \(n\ge286{,}185\) at \(c_0=0.02\), so its constants are
+conservative (Appendix~\ref{app:exp-cost}).
 
 Overall, the experiment shows a tradeoff between representation accuracy,
 exploration cost, and recruitment cost. Restricting recruitment to a cheaper
@@ -1040,7 +1056,10 @@ Exploration in Algorithm~\ref{alg:cost-support} is expensive (\(\$4.69\)M
 here) and pays off only for large samples, and a too short exploration
 selects supports that cannot reach \(p_G\). Variables outside the target
 need not match: after matching ethnicity, adults in fair or poor health are
-overrepresented by \(4.1\) points (Appendix~\ref{app:exp-downstream}).
+overrepresented by \(4.1\) points. Reweighting is no substitute: it is
+cheap for estimates (post-stratifying an online-only sample has design
+effect \(1.03\)), but it cannot enrol participants who were never recruited
+(Appendix~\ref{app:exp-downstream}).
 Variables that affect the endpoint belong in the target, at the price of a
 smaller margin.
 
@@ -3724,36 +3743,56 @@ reduces to evaluating \(\sum_{a\in I}\ell_aq_a(I)\). If Algorithm~\ref{alg:cost-
 \(p_G\) to a facet of that hull.
 
 \paragraph{The greedy rule.} Algorithm~\ref{alg:greedy} states the greedy
-rule of Section~\ref{sec:cost} with unknown means. It uses the estimates and
-the confidence radius of Algorithm~\ref{alg:ucb-sampling}, but divides the
-optimistic correction of each source by its cost, so it needs neither an
-exploration phase nor a margin threshold. With the true means in place of
-the estimates and \(\beta=0\), it is the rule analysed in
-Example~\ref{ex:greedy}. In the experiments, \(\beta=0.3\) and ties at
-\(S_t=0\) are broken towards the least-sampled source.
+rule of Section~\ref{sec:cost} with unknown means. It differs from
+Algorithm~\ref{alg:ucb-sampling} only in dividing the optimistic index of
+each source by its cost \(\ell_a\), so it needs neither an exploration phase
+nor a margin threshold. With the true means in place of the estimates and
+\(\beta=0\), it is the rule analysed in Example~\ref{ex:greedy}. In the
+experiments, \(\delta=0.05\) and \(\beta=0.3\), as for
+Algorithm~\ref{alg:ucb-sampling}, and when \(S_t=0\) the least-sampled
+source is chosen.
 
 \begin{algorithm}[!ht]
 \caption{Greedy Cost-Aware Sampling}
 \label{alg:greedy}
 \begin{algorithmic}[1]
-\STATE Fix \(\delta\) and \(\beta\ge0\), let \(S_0=0\), \(N_a(0)=0\) for every source \(a\).
+\STATE Fix $\delta, \eta$, let \(S_0=0, N_a(0)=0\) for every source \(a\).
 \FOR{\(t=0,1,\ldots,T-1\)}
-    \IF{some source is unsampled}
-        \STATE Choose an unsampled source as \(A_{t+1}\).
-    \ELSIF{\(S_t=0\)}
-        \STATE Choose the least-sampled source as \(A_{t+1}\).
+
+    \IF{\(S_t=0\)}
+        \STATE Choose \(A_{t+1}\) according to any fixed rule.
     \ELSE
-        \STATE Set \(u_t=S_t/\|S_t\|\) and, for every source,
+        \STATE Set $u_t= S_t/\|S_t\|$.
+        \STATE For every source with \(N_a(t)\ge1\), define
         \[
             G_a(t)
-            =
-            \frac{\left\langle u_t,\widehat\mu_{a,N_a(t)}-p_G\right\rangle
-            -\beta\,r_a\!\left(N_a(t)\right)}{\ell_a}.
+                =
+                \frac{1}{\ell_a}
+                \left(
+                \left\langle
+                u_t,\widehat\mu_{a,N_a(t)}-p_G
+                \right\rangle
+                -
+                \beta\,r_a\!\left(N_a(t)\right)
+                \right).
         \]
-        \STATE Choose \(A_{t+1}\in\arg\min_{1\le a\le m}G_a(t)\).
+        For an unsampled source, set \(G_a(t)=-\infty\).
+        \STATE Choose
+        \[
+            A_{t+1}
+            \in
+            \arg\min_{1\le a\le m} G_a(t).
+        \]
     \ENDIF
-    \STATE Sample from \(A_{t+1}\), observe \(Y_{t+1}\), pay \(\ell_{A_{t+1}}\).
-    \STATE Update \(S_{t+1}=S_t+Y_{t+1}-p_G\), \(N_{A_{t+1}}\) and \(\widehat\mu_{A_{t+1}}\).
+
+    \STATE Sample from \(A_{t+1}\), observe
+    \(Y_{t+1}\in\{0,1\}^K\), and pay \(\ell_{A_{t+1}}\).
+
+    \STATE Update $S_{t+1} = S_t+Y_{t+1}-p_G$.
+
+    \STATE Update \(N_{A_{t+1}}(t+1)\) and the empirical mean
+    \(\widehat\mu_{A_{t+1},N_{A_{t+1}}(t+1)}\).
+
 \ENDFOR
 \end{algorithmic}
 \end{algorithm}
