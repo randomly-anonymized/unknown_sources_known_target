@@ -37,12 +37,13 @@
 \usepackage{algorithm} 
 \usepackage{algorithmic}
 \usepackage{amsmath, amssymb, graphicx}
+\usepackage{amsthm}
 \usepackage{placeins}
 \graphicspath{{figures/paper/}}
 % \usepackage[numbers,sort&compress]{natbib}
 \newtheorem{theorem}{Theorem}
 \newtheorem{lemma}{Lemma}
-\newtheorem{proof}{Proof}
+% \newtheorem{proof}{Proof}
 \newtheorem{example}{Example}
 \newtheorem{proposition}{Proposition}
 \newtheorem{remark}{Remark}
@@ -398,20 +399,20 @@ the usual \(T^{-1/2}\) rate to \(T^{-1}\).
 
 \subsection{Alternative methods}
 
-\paragraph{Cheap \& discard.} A natural alternative, commonly used in survey sampling, is to use a single cheap sampling method and then discard respondents from groups that become overrepresented. This can correct the composition of the retained sample, but it may require throwing away a large number of observations. Since every collected response has a cost, this can be expensive even when the cheapest sampling method is used. We next give a simple phone--online example showing that an adaptive mixture of sampling methods can achieve the desired representation at lower cost than collecting a biased sample and correcting it through rejection.
+% \paragraph{Cheap \& discard.} A natural alternative, commonly used in survey sampling, is to use a single cheap sampling method and then discard respondents from groups that become overrepresented. This can correct the composition of the retained sample, but it may require throwing away a large number of observations. Since every collected response has a cost, this can be expensive even when the cheapest sampling method is used. We next give a simple phone--online example showing that an adaptive mixture of sampling methods can achieve the desired representation at lower cost than collecting a biased sample and correcting it through rejection.
 
-\begin{example}
-Consider a single group and two sampling methods. Online sampling has $p_O=0.8,\ell_O=\$1$, while phone sampling has $p_P=0.2,\ell_P=\$3$. Let the target proportion be $p_G=0.4$. 
-Suppose we want a final sample of \(1000\) respondents. To obtain a sample of $1000$ respondents with \(p_G=0.4\),
-we need $400$ respondents from the group and $600$ not from the group. 
-If we use only online recruitment, only $20$\%
-of respondents are not in the group. Therefore, to obtain the
-required $600$ non-group respondents, we need $600/0.2=3000$ online respondents on average. Among these, about $2400$ are in the group and $600$ are not. We retain only $400$ of the respondents within the group and all $600$ respondents not in the group, and the total cost is \$$3000$. 
-By contrast, our adaptive method uses approximately \(333\) online respondents
-and \(667\) phone respondents. The resulting expected cost is approximately \$$2333$. Thus, using an
-appropriate mixture of the two methods is cheaper than collecting only from
-the cheapest method and correcting the sample by rejecting.
-\end{example}
+% \begin{example}
+% Consider a single group and two sampling methods. Online sampling has $p_O=0.8,\ell_O=\$1$, while phone sampling has $p_P=0.2,\ell_P=\$3$. Let the target proportion be $p_G=0.4$. 
+% Suppose we want a final sample of \(1000\) respondents. To obtain a sample of $1000$ respondents with \(p_G=0.4\),
+% we need $400$ respondents from the group and $600$ not from the group. 
+% If we use only online recruitment, only $20$\%
+% of respondents are not in the group. Therefore, to obtain the
+% required $600$ non-group respondents, we need $600/0.2=3000$ online respondents on average. Among these, about $2400$ are in the group and $600$ are not. We retain only $400$ of the respondents within the group and all $600$ respondents not in the group, and the total cost is \$$3000$. 
+% By contrast, our adaptive method uses approximately \(333\) online respondents
+% and \(667\) phone respondents. The resulting expected cost is approximately \$$2333$. Thus, using an
+% appropriate mixture of the two methods is cheaper than collecting only from
+% the cheapest method and correcting the sample by rejecting.
+% \end{example}
 
 \paragraph{Post-hoc reweighting.}
 Another common approach is to keep the biased sample and assign larger
@@ -563,10 +564,15 @@ exploration bonus. Our theoretical guarantee uses \(\beta=1\), we examine smalle
 
 \begin{theorem}[Multiple groups]
 \label{thm:multidimensional-guarantee}
+
 Assume that every observation \(Y_t\in\{0,1\}^K\) satisfies
 \(\|Y_t\|_0\le \ell_0\), and suppose \(p_G\) lies in the
 interior of the convex hull of the source means with margin \(c>0\).
-Let Algorithm~\ref{alg:ucb-sampling} with \(\beta=1\) and the confidence
+For categorical observations \(Y_t\in\{e_1,\ldots,e_K\}\), the interior
+and margin are understood relative to the affine hull of the probability
+simplex.
+
+Let Algorithm~\ref{alg:ucb-sampling} with \(\beta=1\)  and the confidence
 radius defined above generate the sequence of respondents.
 
 Then, for every \(T\ge1\) and every \(\eta\in(0,1)\), with probability at
@@ -651,6 +657,23 @@ per recruit. Thus the myopic rule pays twice as much, even though at
 each round it chooses the source giving the largest correction per unit
 cost.
 \end{example}
+
+A related approach is Lyapunov drift-plus-penalty~\citep{neely2010stochastic}.
+Neely's method gives a tradeoff between sampling cost and the size of the
+representation imbalance, and its basic form assumes that the source
+distributions are known. In our setting, the source distributions are unknown
+and must be learned while sampling. A natural learned-means version would choose
+\[
+A_{t+1}\in\arg\min_a
+\left\{\langle S_t,\widehat\mu_a-p_G\rangle+V\ell_a\right\}.
+\]
+Its standard tradeoff is roughly \(\widetilde O(V/T)\) representation error
+versus \(O(1/V)\) excess average cost. Thus improving one degrades the other.
+By contrast, on a \(K\)-source support with positive margin, the mixture
+representing \(p_G\) is unique; our support-selection theorem can therefore
+retain the \(T^{-1}\) representation rate while also controlling the cost of
+the selected support.
+
 \subsection{The Algorithm}
 
 For the cost results below, we restrict to the categorical setting
@@ -2054,6 +2077,12 @@ potential is exponential in \(\|S_t\|\), we use Hoeffding's lemma to turn this
 negative expected change in the norm, together with the bounded size of one-step
 fluctuations, into a contraction of the exponential potential.\\
 
+In the categorical case, both \(Y_t\) and \(p_G\) have coordinates summing to one. Hence the coordinates of \(S_t\) sum to zero, so
+\(u_t=S_t/\|S_t\|\) lies in the direction space of the simplex. Since \(p_G\) has relative-interiority margin \(c\), there exists a source \(a\) such that
+\[
+\langle u_t,\mu_a-p_G\rangle\le -c.
+\]
+
 More precisely, by the interiority assumption, there exists a source whose mean has directional drift at most \(-c\); on a good round, the confidence bounds and the UCB selection rule imply that the selected source still has directional drift at most $-c/2$
 \[
     \left\langle
@@ -3094,59 +3123,94 @@ then
 \]
 \end{proof}
 
-\begin{lemma}[Cost-gap identification]
-\label{lem:cost-gap}
-Suppose \(I^\star\) and \(I\) satisfy
+\begin{proof}[Proof of Theorem~\ref{thm:cost-aware}]
+By Theorem~\ref{thm:cost-support}, with probability at least
+\(1-\delta\), the selected support satisfies
 \[
-B(I)
-\geq
-B(I^\star)+\Delta_B.
+c(\widehat I)\ge \frac{c_0}{2},
 \]
-Suppose further that
-\[
-|\widehat B(I)-B(I)|
-\leq
-\frac{\Delta_B}{4}
-\]
-and
-\[
-|\widehat B(I^\star)-B(I^\star)|
-\leq
-\frac{\Delta_B}{4}.
-\]
-Then
-\[
-\widehat B(I)
->
-\widehat B(I^\star).
-\]
-\end{lemma}
+together with the stated bound on \(B(\widehat I)\).
 
-\begin{proof}
-We have
+Condition on the exploration history and on this event. After support
+selection, Algorithm~\ref{alg:ucb-sampling} is initialized afresh and run
+on the \(K\) sources in \(\widehat I\). In the categorical setting,
+\(\|Y_t-p_G\|\le\sqrt2\). Applying the proof of
+Theorem~\ref{thm:multidimensional-guarantee} with \(m=K\) and
+\(c\ge c_0/2\) therefore gives
 \[
-\widehat B(I)
-\geq
-B(I)-\frac{\Delta_B}{4}
+\|\widehat p_T-p_G\|
+=
+O\!\left(
+\frac{K^2}{c_0^2T}
+\log\frac{K}{\delta c_0}
++
+\frac{1}{c_0T}
+\log\frac{1}{\eta c_0}
+\right).
 \]
-and
+
+It remains to control the realized cost. Let \(q\) be the unique mixture on
+\(\widehat I\) satisfying
 \[
-\widehat B(I^\star)
-\leq
-B(I^\star)+\frac{\Delta_B}{4}.
+p_G=\sum_{a\in\widehat I}q_a\mu_a,
+\]
+and let
+\[
+x_a:=\frac{N_a(T)}{T}
+\]
+be the realized sampling proportions during the post-exploration phase.
+By Lemma~\ref{lem:coefficient-stability},
+\[
+\|x-q\|_1
+\le
+\frac{2}{c_0}
+\left\|
+\sum_{a\in\widehat I}x_a\mu_a-p_G
+\right\|.
+\]
+Writing
+\[
+M_T:=\sum_{t=1}^T(Y_t-\mu_{A_t}),
+\]
+we have
+\[
+\sum_{a\in\widehat I}x_a\mu_a-p_G
+=
+\widehat p_T-p_G-\frac{M_T}{T}.
+\]
+Each coordinate of \(M_T\) is a martingale with bounded increments, so
+\[
+\frac{\|M_T\|}{T}
+=
+O_{\mathbb P}\!\left(\sqrt{\frac KT}\right).
 \]
 Hence
 \[
-\begin{aligned}
-\widehat B(I)-\widehat B(I^\star)
-&\geq
-B(I)-B(I^\star)
--\frac{\Delta_B}{2}\\
-&\geq
-\frac{\Delta_B}{2}
->0.
-\end{aligned}
+\left|
+\frac1T\sum_{t=1}^T\ell_{A_t}
+-
+B(\widehat I)
+\right|
+\le
+\ell_{\max}\|x-q\|_1
+=
+O_{\mathbb P}\!\left(
+\frac{\ell_{\max}}{c_0}\sqrt{\frac KT}
+\right).
 \]
+Finally, the exploration phase costs at most \(mn\ell_{\max}\). Therefore
+\[
+\overline B_T
+\le
+B(\widehat I)
++
+\frac{mn\ell_{\max}}{T}
++
+O_{\mathbb P}\!\left(
+\frac{\ell_{\max}}{c_0}\sqrt{\frac KT}
+\right),
+\]
+as claimed.
 \end{proof}
 \begin{proof}[Proof of Proposition \ref{prop:one-dimensional-lower-bound}]
 Condition on the history up to time \(T-1\), including the sampling
@@ -3246,6 +3310,62 @@ Therefore
 \]
 The expectation bound follows immediately.
 \end{proof}
+
+\begin{lemma}[Cost-gap identification]
+\label{lem:cost-gap}
+Suppose \(I^\star\) and \(I\) satisfy
+\[
+B(I)
+\geq
+B(I^\star)+\Delta_B.
+\]
+Suppose further that
+\[
+|\widehat B(I)-B(I)|
+\leq
+\frac{\Delta_B}{4}
+\]
+and
+\[
+|\widehat B(I^\star)-B(I^\star)|
+\leq
+\frac{\Delta_B}{4}.
+\]
+Then
+\[
+\widehat B(I)
+>
+\widehat B(I^\star).
+\]
+\end{lemma}
+
+\begin{proof}
+We have
+\[
+\widehat B(I)
+\geq
+B(I)-\frac{\Delta_B}{4}
+\]
+and
+\[
+\widehat B(I^\star)
+\leq
+B(I^\star)+\frac{\Delta_B}{4}.
+\]
+Hence
+\[
+\begin{aligned}
+\widehat B(I)-\widehat B(I^\star)
+&\geq
+B(I)-B(I^\star)
+-\frac{\Delta_B}{2}\\
+&\geq
+\frac{\Delta_B}{2}
+>0.
+\end{aligned}
+\]
+\end{proof}
+
 \begin{remark}
 The support-selection error in Theorem~\ref{thm:cost-aware} decreases as
 \(n^{-1/2}\).
@@ -3269,9 +3389,13 @@ This bound concerns the cost \(B(\widehat I)\) of the selected support;
 the realized average cost \(\overline B_T\) additionally contains the
 finite-\(T\) terms described in Theorem~\ref{thm:cost-aware}.
 
-If the cheapest admissible support is separated from every competing support
-by a cost gap \(\Delta_B>0\), then exact recovery of the cheapest support is
-guaranteed whenever
+Let \(I^\star\) be the cheapest \(K\)-source support with
+\(c(I^\star)\ge c_0\). If there exists \(\Delta_B>0\) such that
+\[
+B(I)\ge B(I^\star)+\Delta_B
+\]
+for every other \(K\)-source support \(I\) with
+\(c(I)\ge c_0/2\), then exact recovery of \(I^\star\) is guaranteed whenever
 \[
 n
 \ge
@@ -3479,7 +3603,7 @@ population is all adults with diagnosed diabetes.
 \paragraph{Channels.} A channel is the set of target-population
 respondents that a recruitment method can reach
 (Table~\ref{tab:channels}); pools overlap, and pools with fewer than
-\(150\) respondents would be excluded (none is). The source distribution of
+\(150\) respondents would be discarded (none is). The source distribution of
 a channel is the weighted distribution of its pool over the target
 categories, so \(\mu_a\) is the weighted composition of the pool. Except
 in Appendix~\ref{app:exp-downstream}, a recruit from channel \(a\) is a
@@ -3620,7 +3744,7 @@ experiments it does not know the means, like our algorithms: it replaces
 Algorithm~\ref{alg:ucb-sampling} (radius \(0.3\,r_a\)), both divided by
 \(\ell_a\), and samples every channel once before using the index. The
 simulation of Example~\ref{ex:myopic} also runs it with the true means. No
-policy discards recruits. The naive designs sample one fixed channel, rotate over
+policy discards recruits. The naive designs sample one fixed channel, rotate over 
 all channels, or follow the mixture proportional to the weighted pool
 sizes.
 
@@ -3649,7 +3773,6 @@ robustness (Fig.~\ref{fig:app-robust}) & age; Black & Alg.~\ref{alg:sign-based} 
 many sources (Fig.~\ref{fig:main}(b), Table~\ref{tab:many}) & ethnicity & Alg.~\ref{alg:ucb-sampling} (\(\beta\in\{1,0.3,0.1,0\}\)), oracles, ETC, naive & \(10^5\) & 250\\
 marginal goals (Fig.~\ref{fig:app-many}(a)) & marginal goals & as above & \(10^5\) & 250\\
 Black\(\times\)age (Fig.~\ref{fig:app-many}(b)) & Black\(\times\)age & Alg.~\ref{alg:ucb-sampling} (\(\beta=0.3\)), oracle closed loop, naive & \(10^5\) & 250\\
-margin ladder (Fig.~\ref{fig:app-ladder}, \ref{fig:app-many}(c)) & six targets & Alg.~\ref{alg:ucb-sampling} (\(\beta=0.3\)), oracle closed loop, uniform & \(10^5\) & 120\\
 cost per recruit (Fig.~\ref{fig:main}(c), \ref{fig:app-budget}(a,b), Table~\ref{tab:cost}) & Black/other & Table~\ref{tab:cost} & \(3\times10^5\) & 200\\
 cost, fixed budget (Fig.~\ref{fig:app-budget}(c)) & Black/other & Alg.~\ref{alg:cost-support}\(\to\)\ref{alg:ucb-sampling}, myopic rule, Alg.~\ref{alg:ucb-sampling}, oracle & \(\$1\)--\(16\)M & 200\\
 cost, \(c_0\) sweep (Table~\ref{tab:c0}) & Black/other & Alg.~\ref{alg:cost-support}\(\to\)\ref{alg:ucb-sampling}, \(n\in\{400,800,1{,}600\}\) & \(10^5\) & 100\\
