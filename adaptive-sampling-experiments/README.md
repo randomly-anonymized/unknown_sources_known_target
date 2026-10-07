@@ -11,7 +11,7 @@ of it defined by NHIS variables.
 python3 scripts/01_build_scenarios.py                   # NHIS -> data/scenarios/*.json + results/E0_scenarios.csv
 python3 scripts/02_tier1.py age|black|example1|robust   # sec. 2-3   (E1)
 python3 scripts/03_tier2.py diag|e21a1|e21a2|e21b|e22a|e22b|e24a|e24b|e25   # sec. 5 (E2)
-python3 scripts/04_tier3.py refs|e31|e33|e34            # sec. 6 (E3): Black/other target; online $72, offline $OFFLINE_COST (default $199)
+python3 scripts/04_tier3.py refs|e31|e33                # sec. 6 (E3): Black/other target; online $72, offline $OFFLINE_COST (default $199)
 for k in alg3 alg3n800 alg3n400 alg2 myopic oracle oracleall olmincost online uniform; do python3 scripts/04_tier3.py e32 $k; done
 python3 scripts/04_tier3.py e32merge                    # results/E3_endtoend.csv (cost per recruit and error against T)
 for k in alg3 alg3n800 alg3n400 alg2 myopic oracle; do python3 scripts/04_tier3.py e35 $k; done

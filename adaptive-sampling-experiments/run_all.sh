@@ -6,7 +6,7 @@ python3 scripts/00_fetch_data.py                      # skips files already in d
 python3 scripts/01_build_scenarios.py                 # ~1 min
 for s in age black example1 robust;            do python3 scripts/02_tier1.py $s; done   # ~12 min
 for s in diag e21a1 e21a2 e21b e22a e22b e24a e24b e25; do python3 scripts/03_tier2.py $s; done  # ~25 min
-for s in refs e31 e33 e34;                     do python3 scripts/04_tier3.py $s; done
+for s in refs e31 e33;                         do python3 scripts/04_tier3.py $s; done
 for k in alg3 alg3n800 alg3n400 alg2 myopic oracle oracleall olmincost online uniform; do python3 scripts/04_tier3.py e32 $k; done
 python3 scripts/04_tier3.py e32merge
 for k in alg3 alg3n800 alg3n400 alg2 myopic oracle; do python3 scripts/04_tier3.py e35 $k; done

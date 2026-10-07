@@ -1,6 +1,6 @@
 """Tier 3 (sec. 6): cost-aware sampling. Stages: e31 (support selection), e32 <key> / e32merge (cost per
-recruit and error against the sample size T; Figure 1(c)), e33 (c0 trade-off), e34 (myopic-rule
-counterexample, Example 2), e35 <key> / e35merge (error at a fixed total budget), refs (cost references /
+recruit and error against the sample size T; Figure 1(c)), e33 (c0 trade-off), e35 <key> / e35merge
+(error at a fixed total budget), refs (cost references /
 break-even table; not used in the manuscript).
 
 The cost experiments use the Black/other target of the diabetes population and the meta-analysis medians:
@@ -14,7 +14,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 from src.env import categorical_env
 from src.geometry import enumerate_supports, support_table, feasible_allocation
-from src.policies import (Alg2UCB, OracleCL, Alg3ThenAlg2, MyopicCost, FixedArm, RoundRobin,
+from src.policies import (Alg2UCB, OracleCL, Alg3ThenAlg2, GreedyCost, FixedArm, RoundRobin,
                           OpenLoopHerding, Alg1Sign, simplex_heights_batch)
 from src.runner import run, log_checkpoints, lp_discard_cost, run_budget
 from src.theory import thm3_cost_bound, thm3_n
@@ -132,7 +132,7 @@ E32_POLICIES = {
     "alg3n800": lambda env: Alg3ThenAlg2(n=800, c0=C0_MAIN, beta=0.3),
     "alg3n400": lambda env: Alg3ThenAlg2(n=400, c0=C0_MAIN, beta=0.3),
     "alg2": lambda env: Alg2UCB(0.3),
-    "myopic": lambda env: MyopicCost(beta=0.3),               # myopic cost-ratio rule, optimistic estimated means
+    "myopic": lambda env: GreedyCost(beta=0.3),               # greedy rule (Algorithm 4), optimistic estimated means
     "oracle": lambda env: OracleCL(arms=cheapest_admissible(env, C0_MAIN)[0]),
     "oracleall": lambda env: OracleCL(),
     "olmincost": lambda env: OpenLoopHerding(feasible_allocation(env.mu, env.p_G, env.cost)[0], "ORACLE-OL-mincost"),
@@ -181,30 +181,6 @@ def stage_e33():
             print(f"  c0={c0} n={n}: err={rows[-1]['err_l2']:.5f} cost/n=${rows[-1]['cost_per_sample']:.1f} "
                   f"fallback={rows[-1]['fallback']:.2f}", flush=True)
     pd.DataFrame(rows).to_csv(f"{RES}/E3_c0_tradeoff.csv", index=False)
-
-
-def stage_e34():
-    """Example 2 of the manuscript: the myopic cost-ratio rule pays 2 per recruit, support selection ~1.
-    Arms A (p=0.4, $1), B (p=0.9, $1), C (p=0.1, $3); target share p_G = 0.5 of the designated group."""
-    mu = np.array([[0.4, 0.6], [0.9, 0.1], [0.1, 0.9]])
-    env = categorical_env(mu, np.array([0.5, 0.5]), np.array([1.0, 1.0, 3.0]), names=["A", "B", "C"])
-    T, R = 100_000, 100
-    pols = [MyopicCost(oracle=True, tie_arm=1, tag="MYOPIC-COST(oracle,tie=B)"),
-            MyopicCost(oracle=True, tag="MYOPIC-COST(oracle,tie=least-sampled)"),
-            MyopicCost(beta=0.3, tag="MYOPIC-COST(estimated means)"),
-            Alg1Sign(arm_high=1, arm_low=0, coord=0), Alg3ThenAlg2(n=1000, c0=0.1, beta=1.0)]
-    rows = []
-    for pol in pols:
-        df, _ = run(env, pol, T, R, seed=8001, checkpoints=[T])
-        r = df.iloc[-1]
-        rows.append(dict(policy=pol.name if pol.name != "ALG1" else "ALG1 on {A,B}", T=T, R=R,
-                         cost_per_sample=r.cost_per_sample, err_share=r.err_linf_mean,
-                         pull_A=r.pull_A, pull_B=r.pull_B, pull_C=r.pull_C,
-                         fallback=float(np.mean(pol.fallback)) if getattr(pol, "fallback", None) is not None else np.nan))
-    df = pd.DataFrame(rows)
-    df.to_csv(f"{RES}/E3_myopic_counterexample.csv", index=False)
-    print(df.to_string(index=False, float_format=lambda v: f"{v:.4g}"))
-    print("analytic: myopic 2, support {A,B} 1")
 
 
 E35_POLICIES = {k: E32_POLICIES[k] for k in ["alg3", "alg3n800", "alg3n400", "alg2", "myopic", "oracle"]}
@@ -260,5 +236,5 @@ if __name__ == "__main__":
     if sys.argv[1] in ("e32", "e35"):
         dict(e32=stage_e32, e35=stage_e35)[sys.argv[1]](sys.argv[2])
     else:
-        dict(e31=stage_e31, e32merge=stage_e32_merge, e33=stage_e33, e34=stage_e34, e35merge=stage_e35_merge,
+        dict(e31=stage_e31, e32merge=stage_e32_merge, e33=stage_e33, e35merge=stage_e35_merge,
              refs=stage_refs)[sys.argv[1]]()

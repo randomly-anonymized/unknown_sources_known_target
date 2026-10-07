@@ -34,9 +34,9 @@
   "policies": {
     "ALG1":                {"label": "Algorithm 1",                  "color": "#000000", "lw": 1.7},
     "ALG2(beta=1)":        {"label": "Algorithm 2",                  "color": "#000000", "lw": 1.7},
-    "ALG2(beta=0.3)":      {"label": "Algorithm 2, radius $0.3\\,r_a$", "color": "#555555", "lw": 1.0, "ls": "--"},
-    "ALG2(beta=0.1)":      {"label": "Algorithm 2, radius $0.1\\,r_a$", "color": "#999999", "lw": 1.0, "ls": ":"},
-    "ALG2(greedy)":        {"label": "greedy plug-in ($r_a\\equiv 0$)", "color": "#CC79A7", "lw": 1.1, "ls": "-."},
+    "ALG2(beta=0.3)":      {"label": "Algorithm 2, $\\beta=0.3$", "color": "#555555", "lw": 1.0, "ls": "--"},
+    "ALG2(beta=0.1)":      {"label": "Algorithm 2, $\\beta=0.1$", "color": "#999999", "lw": 1.0, "ls": ":"},
+    "ALG2(greedy)":        {"label": "Algorithm 2, $\\beta=0$", "color": "#CC79A7", "lw": 1.1, "ls": "-."},
     "ORACLE-CL":           {"label": "oracle closed loop",           "color": "#0072B2", "lw": 1.1},
     "ORACLE-OL":           {"label": "oracle open loop",             "color": "#009E73", "lw": 1.1, "ls": "--"},
     "ORACLE-OL-iid":       {"label": "oracle open loop (i.i.d.)",    "color": "#009E73", "lw": 0.8, "ls": ":"},

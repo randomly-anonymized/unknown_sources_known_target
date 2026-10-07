@@ -615,30 +615,34 @@ In practice, different polling or data-collection methods have different
 costs, so a natural question is how to assemble a representative sample as
 cheaply as possible. We assign each sampling method \(a\) a cost \(\ell_a\).
 
-A natural cost-aware modification of the adaptive rule is to choose at each
-round the source giving the largest expected correction per unit cost, namely
+We propose two cost-aware methods. The first, the \emph{greedy rule}, is a
+simple cost-aware modification of the adaptive rule: at each round it chooses
+the source giving the largest expected correction per unit cost,
 \[
 A_{t+1}
 \in
 \operatorname*{arg\,min}_{a\in[m]}
 \frac{\langle S_t,\mu_a-p_G\rangle}{\ell_a}.
 \]
-This rule only asks which source looks cheapest for correcting the error
-\emph{right now}. But our real goal is different: we want the entire final
-sample to have the right composition at the smallest possible total cost.
-A choice that looks cheap at one round may force us to use expensive sources
-later. Our algorithm therefore first asks which combination of sampling
-methods can produce \(p_G\) at the lowest average cost, and then runs the
-adaptive sampling rule using that combination. The following example shows
-that the difference can be large.
+When the means are unknown, it uses the optimistic estimates of
+Algorithm~\ref{alg:ucb-sampling} (Algorithm~\ref{alg:greedy} in
+Appendix~\ref{app:exp-impl}). The greedy rule needs no exploration phase, but
+it only asks which source looks cheapest for correcting the error
+\emph{right now}, whereas we want the entire final sample to have the right
+composition at the smallest possible total cost. A choice that looks cheap
+at one round may force us to use expensive sources later. Our second method
+therefore first asks which combination of sampling methods can produce
+\(p_G\) at the lowest average cost, and then runs the adaptive sampling rule
+using that combination. The following example shows that the difference can
+be large.
 
-\begin{example}[The myopic rule can overpay]
-\label{ex:myopic}
+\begin{example}[The greedy rule can overpay]
+\label{ex:greedy}
 Let \(K=2\), \(p_G=0.5\), and consider three sources:
 \(A\) with \(p_A=0.4\) and \(\ell_A=1\),
 \(B\) with \(p_B=0.9\) and \(\ell_B=1\), and
 \(C\) with \(p_C=0.1\) and \(\ell_C=3\). 
-For \(S_t>0\), the myopic rule prefers \(C\) to \(A\), since
+For \(S_t>0\), the greedy rule prefers \(C\) to \(A\), since
 \[
 \frac{p_C-p_G}{\ell_C}
 =
@@ -648,12 +652,12 @@ For \(S_t>0\), the myopic rule prefers \(C\) to \(A\), since
 =
 \frac{p_A-p_G}{\ell_A}.
 \]
-For \(S_t<0\), it chooses \(B\). Thus, the myopic rule samples only
+For \(S_t<0\), it chooses \(B\). Thus, the greedy rule samples only
 from \(B\) and \(C\). 
 To obtain \(p_G=0.5\) from these two sources, they must be sampled in
 equal proportions, since $(1/2)(0.9)+ (1/2)(0.1)=0.5$. The resulting average cost is therefore $2$ per recruit. In contrast, the pair \(\{A,B\}\) can also produce \(p_G=0.5\).
 Since both sources cost \(1\), any mixture of them costs exactly \(1\)
-per recruit. Thus the myopic rule pays twice as much, even though at
+per recruit. Thus the greedy rule pays twice as much, even though at
 each round it chooses the source giving the largest correction per unit
 cost.
 \end{example}
@@ -783,7 +787,7 @@ empirical mean \(\widehat\mu_a\).
 \includegraphics[width=\textwidth]{fig_main}
 \vspace{-6mm}
 \caption{(a) Two sources, share \(65+\) (2{,}000 runs). (b) Sixteen
-sources, ethnic target (250 runs); ETC tuned to \(T=10^5\). (c) Black/other
+sources, diagnosed diabetes target (250 runs); ETC tuned to \(T=10^5\). (c) Black/other
 target, offline \(\$199\): cost per recruit, exploration included (200
 runs); dotted: the cheapest support \(I^\star\).}
 \label{fig:main}
@@ -979,15 +983,15 @@ have correlation \(-0.9999\), so the adaptive allocation nearly cancels the
 sampling noise (Appendix~\ref{app:exp-two}).
 
 \paragraph{Multiple groups.}
-The ethnic target is \{Hispanic: \(19.0\%\), non-Hispanic Black:
+The diagnosed diabetes target is \{Hispanic: \(19.0\%\), non-Hispanic Black:
 \(15.5\%\), other: \(65.4\%\)\} (\(K=3\), \(c=0.082\) over all sixteen
 sources); the groups are mutually exclusive, so \(\ell_0=1\).
 Algorithm~\ref{alg:ucb-sampling} learns the \(\mu_a\) and approaches the
 oracle closed loop (Figure~\ref{fig:main}(b)): \(\|S_T\|\) is \(10.6\) at
 \(T=1{,}202\) and \(2.5\) at \(T=10^5\), against \(2.0\) for the oracle. The
 theoretical radius is conservative: \(90\%\) of runs reach error \(0.01\)
-after \(3{,}631\) recruits with radius \(r_a\), and after \(1{,}202\) with
-\(0.3\,r_a\). Some exploration is needed, however: with no radius, a source
+after \(3{,}631\) recruits with \(\beta=1\), and after \(1{,}202\) with
+\(\beta=0.3\). Some exploration is needed, however: with \(\beta=0\), a source
 that looks unhelpful after its first few samples may never be sampled
 enough to correct the estimate, and at least \(10\%\) of runs stall
 \(0.03\) or more from \(p_G\). Finer targets are harder to match. From
@@ -996,17 +1000,17 @@ Black/other (\(K=2\), \(c=0.128\)) to ethnicity\(\times\)age (\(K=6\),
 oracle and in \([0.12,0.42]\) for Algorithm~\ref{alg:ucb-sampling},
 suggesting that the observed imbalance grows roughly as \(1/c\). After
 \(785\) recruits, Algorithm~\ref{alg:ucb-sampling} is \(5.8\) times closer
-to the target than uniform recruitment for ethnicity, but only \(2.7\)
+to the target than uniform recruitment for this target, but only \(2.7\)
 times for ethnicity\(\times\)age (Appendix~\ref{app:exp-many}).
 
 \paragraph{Cost-aware sampling.}
 We use the Black/other target (\(15.5\%\) Black; \(K=2\), \(c=0.128\) over
-all sources), on which the myopic rule falls into the trap of
-Example~\ref{ex:myopic}. Online recruits are \(13.9\%\) Black and southern
+all sources), on which our greedy rule falls into the trap of
+Example~\ref{ex:greedy}. Online recruits are \(13.9\%\) Black and southern
 clinics \(24.5\%\), so the mixture \(I^\star\) of the two matches the target
 at \(\$91.27\) per recruit, the cheapest feasible mixture, with margin
 \(0.023\). Because online recruits correct an excess of Black recruits only
-slowly, the myopic rule, with estimated means, prefers Spanish-language
+slowly, the greedy rule, which learns the means, prefers Spanish-language
 clinics (\(0.4\%\) Black) at \(\$199\): it recruits \(60\%\) from southern
 and \(36\%\) from Spanish-language clinics and pays \(\$197\) per recruit at
 \(T=10^5\). Figure~\ref{fig:main}(c) shows the cost per recruit of
@@ -1015,14 +1019,14 @@ source) followed by Algorithm~\ref{alg:ucb-sampling}, which keeps the
 exploration samples in the sample and uses them to estimate the means.
 Exploration costs \(\$183\) per recruit (\(\$4.69\)M in total). Afterwards
 the cost per recruit falls to \(\$123\) at \(T=10^5\) and \(\$106\) at
-\(T=3\times10^5\), against \(\$197\)--\(\$198\) for the myopic rule, which
+\(T=3\times10^5\), against \(\$197\)--\(\$198\) for the greedy rule, which
 is cheaper only below \(T\approx10^4\), while its estimates are poor;
 \(194\) of \(200\) runs select \(I^\star\) or \(\{\)portal, southern
 clinics\(\}\) (\(\$95.88\)). The price is a larger error at the same \(T\),
 since the cheaper support has a smaller margin (\(0.023\) against
 \(0.128\)): at \(T=10^5\), the median error is \(3.5\times10^{-5}\) against
 \(8\times10^{-6}\), and one run selects a support that misses \(p_G\). With
-a budget of \(\$16\)M, the myopic rule is \(2.3\) times as accurate, while
+a budget of \(\$16\)M, the greedy rule is \(2.3\) times as accurate, while
 Algorithm~\ref{alg:cost-support}\(\to\)\ref{alg:ucb-sampling} recruits
 \(1.7\) times as many participants (Appendix~\ref{app:exp-cost}).
 
@@ -1137,7 +1141,7 @@ smaller margin.
 % estimated distributions.}, the product \(c\|S_T\|\) remains of comparable
 % size across the different targets: it lies in \([0.07,0.25]\) for the
 % oracle and in \([0.12,0.42]\) for
-% Algorithm~\ref{alg:ucb-sampling} with radius \(0.3\,r_a\)
+% Algorithm~\ref{alg:ucb-sampling} with \(\beta=0.3\)
 % (Appendix Figure~\ref{fig:app-ladder}). Thus, the observed imbalance grows roughly as 
 % \(1/c\), consistent with the dependence on \(c\) in
 % Theorem~\ref{thm:multidimensional-guarantee}.
@@ -1158,7 +1162,7 @@ smaller margin.
 % three-source support with margin at least \(c_0\) is
 % \(I^\star=\{\)online, southern clinics, western clinics\(\}\), costing
 % \(\$90.70\) per recruit, against \(\$108\) for both the cost-unaware closed
-% loop and the myopic rule of Section~\ref{sec:cost}. A feasible mixture
+% loop and the greedy rule of Section~\ref{sec:cost}. A feasible mixture
 % costing \(\$81.68\) exists, but its margin is only \(0.004\).
 
 % We fix a total budget and compare the error \(\|\widehat p_T-p_G\|_2\),
@@ -3676,7 +3680,7 @@ two sources, age & \(65+\): 47.1, \(<65\): 52.9 (online, landline) & 2 & 0.1001\
 two sources, Black & Black: 15.5, other: 84.5 (online, clinics South) & 2 & 0.0228\\
 \hline
 Black / other & Black: 15.5, other: 84.5 & 2 & 0.1275\\
-ethnicity & Hispanic: 19.0, non-Hispanic Black: 15.5, other: 65.4 & 3 & 0.0822\\
+diagnosed diabetes & Hispanic: 19.0, non-Hispanic Black: 15.5, other: 65.4 & 3 & 0.0822\\
 age & 18--49: 20.0, 50--64: 32.9, \(65+\): 47.1 & 3 & 0.0469\\
 age\(\times\)sex & men \(<65\): 26.5, men \(65+\): 23.5, women \(<65\): 26.4, women \(65+\): 23.6 & 4 & 0.0256\\
 Black\(\times\)age & Black \(<65\): 8.7, Black \(65+\): 6.8, other \(<65\): 44.3, other \(65+\): 40.2 & 4 & 0.0086\\
@@ -3696,8 +3700,7 @@ with \(P\) the channel whose share of the designated group is below
 \(\delta=0.05\) and the radius \(r_a(n)\) of Appendix~A; unsampled
 channels have index \(-\infty\) (ties are broken by channel order), and
 when \(S_t=0\) the least-sampled channel is chosen. Its variants multiply
-\(r_a\) by \(\beta\in\{0.3,0.1\}\) or remove it (\(\beta=0\), the greedy
-plug-in rule). A value \(\beta<1\) is not a re-tuned confidence level:
+\(r_a\) by \(\beta\in\{0.3,0.1\}\) or remove it (\(\beta=0\)). A value \(\beta<1\) is not a re-tuned confidence level:
 since \(r_a(n)\propto\sqrt{\log(A/\delta)}\) with \(A=\pi^2mKn^2/3\),
 matching \(\beta r_a(n)\) would require \(\delta'=A^{1-\beta^2}\delta^{\beta^2}\),
 e.g., \(\delta'\approx2\times10^7\) for \(\beta=0.3\), \(K=3\), \(m=16\),
@@ -3721,6 +3724,41 @@ reduces to evaluating \(\sum_{a\in I}\ell_aq_a(I)\). If Algorithm~\ref{alg:cost-
 \(c\) of a target in the hull of all channels is the smallest distance from
 \(p_G\) to a facet of that hull.
 
+\paragraph{The greedy rule.} Algorithm~\ref{alg:greedy} states the greedy
+rule of Section~\ref{sec:cost} with unknown means. It uses the estimates and
+the confidence radius of Algorithm~\ref{alg:ucb-sampling}, but divides the
+optimistic correction of each source by its cost, so it needs neither an
+exploration phase nor a margin threshold. With the true means in place of
+the estimates and \(\beta=0\), it is the rule analysed in
+Example~\ref{ex:greedy}. In the experiments, \(\beta=0.3\) and ties at
+\(S_t=0\) are broken towards the least-sampled source.
+
+\begin{algorithm}[!ht]
+\caption{Greedy Cost-Aware Sampling}
+\label{alg:greedy}
+\begin{algorithmic}[1]
+\STATE Fix \(\delta\) and \(\beta\ge0\), let \(S_0=0\), \(N_a(0)=0\) for every source \(a\).
+\FOR{\(t=0,1,\ldots,T-1\)}
+    \IF{some source is unsampled}
+        \STATE Choose an unsampled source as \(A_{t+1}\).
+    \ELSIF{\(S_t=0\)}
+        \STATE Choose the least-sampled source as \(A_{t+1}\).
+    \ELSE
+        \STATE Set \(u_t=S_t/\|S_t\|\) and, for every source,
+        \[
+            G_a(t)
+            =
+            \frac{\left\langle u_t,\widehat\mu_{a,N_a(t)}-p_G\right\rangle
+            -\beta\,r_a\!\left(N_a(t)\right)}{\ell_a}.
+        \]
+        \STATE Choose \(A_{t+1}\in\arg\min_{1\le a\le m}G_a(t)\).
+    \ENDIF
+    \STATE Sample from \(A_{t+1}\), observe \(Y_{t+1}\), pay \(\ell_{A_{t+1}}\).
+    \STATE Update \(S_{t+1}=S_t+Y_{t+1}-p_G\), \(N_{A_{t+1}}\) and \(\widehat\mu_{A_{t+1}}\).
+\ENDFOR
+\end{algorithmic}
+\end{algorithm}
+
 \paragraph{Baselines.} The oracle closed loop chooses
 \(\arg\min_a\langle S_t,\mu_a-p_G\rangle\) with the true means. The
 oracle open loop follows a fixed mixture \(x^\star\) with
@@ -3736,15 +3774,8 @@ then computes the cheapest mixture that makes the expected final
 composition equal to \(p_G\) under the estimated means and the labels
 already collected (or, if none exists, the mixture closest to it in
 \(\ell_\infty\)), and follows it by herding. Because it is configured for
-a horizon \(T\), we evaluate it only at that horizon. The myopic cost-ratio
-rule of Section~\ref{sec:cost} chooses
-\(\arg\min_a\langle S_t,\mu_a-p_G\rangle/\ell_a\). In the NHIS cost
-experiments it does not know the means, like our algorithms: it replaces
-\(\mu_a\) by \(\widehat\mu_a\) and subtracts the exploration bonus of
-Algorithm~\ref{alg:ucb-sampling} (radius \(0.3\,r_a\)), both divided by
-\(\ell_a\), and samples every channel once before using the index. The
-simulation of Example~\ref{ex:myopic} also runs it with the true means. No
-policy discards recruits. The naive designs sample one fixed channel, rotate over 
+a horizon \(T\), we evaluate it only at that horizon. No policy discards
+recruits. The naive designs sample one fixed channel, rotate over 
 all channels, or follow the mixture proportional to the weighted pool
 sizes.
 
@@ -3770,15 +3801,14 @@ experiment & target & policies & \(T\) & runs\\
 \hline
 two sources (Fig.~\ref{fig:main}(a), \ref{fig:app-two}) & age; Black & Alg.~\ref{alg:sign-based}, oracle open loop, ETC, naive & \(10^5\) & 2{,}000\\
 robustness (Fig.~\ref{fig:app-robust}) & age; Black & Alg.~\ref{alg:sign-based} with modifications, oracle open loop, ETC & \(2\times10^4\) & 500\\
-many sources (Fig.~\ref{fig:main}(b), Table~\ref{tab:many}) & ethnicity & Alg.~\ref{alg:ucb-sampling} (\(\beta\in\{1,0.3,0.1,0\}\)), oracles, ETC, naive & \(10^5\) & 250\\
+many sources (Fig.~\ref{fig:main}(b), Table~\ref{tab:many}) & diagnosed diabetes & Alg.~\ref{alg:ucb-sampling} (\(\beta\in\{1,0.3,0.1,0\}\)), oracles, ETC, naive & \(10^5\) & 250\\
 marginal goals (Fig.~\ref{fig:app-many}(a)) & marginal goals & as above & \(10^5\) & 250\\
 Black\(\times\)age (Fig.~\ref{fig:app-many}(b)) & Black\(\times\)age & Alg.~\ref{alg:ucb-sampling} (\(\beta=0.3\)), oracle closed loop, naive & \(10^5\) & 250\\
 cost per recruit (Fig.~\ref{fig:main}(c), \ref{fig:app-budget}(a,b), Table~\ref{tab:cost}) & Black/other & Table~\ref{tab:cost} & \(3\times10^5\) & 200\\
-cost, fixed budget (Fig.~\ref{fig:app-budget}(c)) & Black/other & Alg.~\ref{alg:cost-support}\(\to\)\ref{alg:ucb-sampling}, myopic rule, Alg.~\ref{alg:ucb-sampling}, oracle & \(\$1\)--\(16\)M & 200\\
+cost, fixed budget (Fig.~\ref{fig:app-budget}(c)) & Black/other & Alg.~\ref{alg:cost-support}\(\to\)\ref{alg:ucb-sampling}, greedy rule, Alg.~\ref{alg:ucb-sampling}, oracle & \(\$1\)--\(16\)M & 200\\
 cost, \(c_0\) sweep (Table~\ref{tab:c0}) & Black/other & Alg.~\ref{alg:cost-support}\(\to\)\ref{alg:ucb-sampling}, \(n\in\{400,800,1{,}600\}\) & \(10^5\) & 100\\
 support selection (Table~\ref{tab:selection}) & Black/other & Alg.~\ref{alg:cost-support}, \(n\in\{25,\dots,1{,}600\}\), 10 cost vectors & -- & 250\\
-Example~\ref{ex:myopic} & synthetic & myopic rule (true and estimated means), Alg.~\ref{alg:sign-based}, Alg.~\ref{alg:cost-support}\(\to\)\ref{alg:ucb-sampling} & \(10^5\) & 100\\
-downstream (Table~\ref{tab:downstream}) & ethnicity & Alg.~\ref{alg:ucb-sampling} (\(\beta=0.3\)), oracle closed loop, naive & \(2\times10^4\) & 200\\
+downstream (Table~\ref{tab:downstream}) & diagnosed diabetes & Alg.~\ref{alg:ucb-sampling} (\(\beta=0.3\)), oracle closed loop, naive & \(2\times10^4\) & 200\\
 \hline
 \end{tabular}
 \end{table}
@@ -3918,17 +3948,17 @@ ordering violated & 322 & \(1.6\cdot10^{-2}\) & \(-0.03\)\\
 \subsection{Many Sources}
 \label{app:exp-many}
 
-\paragraph{Ethnic target.} Table~\ref{tab:many} gives the numbers behind
-Figure~\ref{fig:main}(b). Without an exploration bonus (\(r_a\equiv0\)), the
+\paragraph{Diagnosed diabetes target.} Table~\ref{tab:many} gives the numbers behind
+Figure~\ref{fig:main}(b). Without an exploration bonus (\(\beta=0\)), the
 algorithm trusts its current estimates: a channel that looks unhelpful after
 its first few samples may be sampled too little afterward to correct the
 estimate, and at least \(10\%\) of runs finish \(0.03\) or more from
 \(p_G\). Some exploration is therefore necessary, but the full theoretical
-radius is larger than needed here: radius \(0.3\,r_a\) reaches the
+radius is larger than needed here: \(\beta=0.3\) reaches the
 \(N_{90}\) criterion three times sooner.
 
 \begin{table}[!ht]
-\caption{Ethnic target, 16 channels (250 replications). Error
+\caption{Diagnosed diabetes target, 16 channels (250 replications). Error
 \(\|\widehat p_T-p_G\|_2\) at \(T=832\) (ETC still explores); \(N_{90}\):
 first logged \(T\) with error \(\le0.01\) in \(90\%\) of runs;
 \(\|S_T\|_2\) and cost per recruit at \(T=10^5\).}
@@ -3939,8 +3969,8 @@ first logged \(T\) with error \(\le0.01\) in \(90\%\) of runs;
 policy & error & \(N_{90}\) & \(\|S_T\|_2\) & \(\$\)/recruit\\
 \hline
 Algorithm~\ref{alg:ucb-sampling} & 0.0116 & 3{,}631 & 2.5 & 193\\
-\quad radius \(0.3\,r_a\) & 0.0071 & 1{,}202 & 1.9 & 198\\
-\quad greedy, \(r_a\equiv0\) & 0.0125 & \(>10^5\) & 532 & 192\\
+\quad \(\beta=0.3\) & 0.0071 & 1{,}202 & 1.9 & 198\\
+\quad \(\beta=0\) & 0.0125 & \(>10^5\) & 532 & 192\\
 oracle closed loop & 0.0024 & 398 & 2.0 & 199\\
 oracle open loop & 0.0211 & 15{,}849 & 194 & 106\\
 ETC & -- & \(>10^5\) & 1{,}731 & 108\\
@@ -3956,8 +3986,8 @@ Table~\ref{tab:targets} (\(c=0.054\)), the picture of
 Section~\ref{sec:experiments} is unchanged (Figure~\ref{fig:app-many}(a),
 Table~\ref{tab:many-extra}). Algorithm~\ref{alg:ucb-sampling} and its
 variants with a smaller radius end within \(15\%\) of the oracle closed
-loop at \(T=10^5\) (\(\|S_T\|\) of \(4.4\) to \(4.8\) against \(4.2\)). The
-greedy rule has mean \(\|S_T\|=110\), driven by a minority of stalled runs
+loop at \(T=10^5\) (\(\|S_T\|\) of \(4.4\) to \(4.8\) against \(4.2\)).
+With \(\beta=0\), Algorithm~\ref{alg:ucb-sampling} has mean \(\|S_T\|=110\), driven by a minority of stalled runs
 (its \(90\)th percentile is \(11.6\)). The oracle open loop reaches
 \(\|S_T\|=246\).
 
@@ -3973,7 +4003,7 @@ error at \(T=832\), \(0.014\), is a third of that of uniform recruitment
 \caption{Many sources. (a) Marginal goals (multi-label, \(\ell_0=3\), 250
 replications). (b) Black\(\times\)age (250 replications). (c) Error over
 \(T\) for the six targets of Figure~\ref{fig:main}(c) (120 replications);
-solid: Algorithm~\ref{alg:ucb-sampling} with radius \(0.3\,r_a\), dotted:
+solid: Algorithm~\ref{alg:ucb-sampling} with \(\beta=0.3\), dotted:
 oracle closed loop.}
 \label{fig:app-many}
 \end{figure}
@@ -3989,9 +4019,9 @@ oracle closed loop.}
 target & policy & error & \(\|S_T\|\) & \(90\%\) & \(\$\)/recruit\\
 \hline
 marginal goals & Algorithm~\ref{alg:ucb-sampling} & 0.0233 & 4.8 & 8.6 & 179\\
- & \quad radius \(0.3\,r_a\) & 0.0117 & 4.4 & 7.7 & 181\\
+ & \quad \(\beta=0.3\) & 0.0117 & 4.4 & 7.7 & 181\\
  & \quad radius \(0.1\,r_a\) & 0.0101 & 4.5 & 8.1 & 184\\
- & \quad greedy, \(r_a\equiv0\) & 0.0121 & 110.1 & 11.6 & 184\\
+ & \quad \(\beta=0\) & 0.0121 & 110.1 & 11.6 & 184\\
  & oracle closed loop & 0.0049 & 4.2 & 7.4 & 186\\
  & oracle open loop & 0.0278 & 246.5 & 358.5 & 124\\
  & ETC & -- & 2{,}005.1 & 2{,}939.2 & 126\\
@@ -3999,7 +4029,7 @@ marginal goals & Algorithm~\ref{alg:ucb-sampling} & 0.0233 & 4.8 & 8.6 & 179\\
  & uniform & 0.0515 & 4{,}402.0 & 4{,}581.2 & 183\\
  & pool-proportional & 0.0375 & 2{,}598.7 & 2{,}784.6 & 173\\
 \hline
-Black\(\times\)age & Alg.~\ref{alg:ucb-sampling}, radius \(0.3\,r_a\) & 0.0140 & 35.0 & 81.0 & 190\\
+Black\(\times\)age & Alg.~\ref{alg:ucb-sampling}, \(\beta=0.3\) & 0.0140 & 35.0 & 81.0 & 190\\
  & oracle closed loop & 0.0076 & 7.8 & 15.9 & 197\\
  & online only & 0.0825 & 8{,}063.9 & 8{,}331.8 & 72\\
  & uniform & 0.0438 & 3{,}963.3 & 4{,}213.4 & 183\\
@@ -4012,7 +4042,7 @@ Table~\ref{tab:ladder} show the imbalance at \(T=10^5\) against the margin
 for the six targets, from Black/other (\(K=2\), \(c=0.128\)) to
 ethnicity\(\times\)age (\(K=6\), \(c=0.0014\)). The product \(c\|S_T\|\)
 lies in \([0.07,0.25]\) for the oracle closed loop and in \([0.12,0.42]\)
-for Algorithm~\ref{alg:ucb-sampling} with radius \(0.3\,r_a\); it varies by
+for Algorithm~\ref{alg:ucb-sampling} with \(\beta=0.3\); it varies by
 a factor of at most \(3.6\) while \(c\) varies by a factor of \(92\). Finer
 targets are also harder to match early on: after \(785\) recruits,
 Algorithm~\ref{alg:ucb-sampling} is \(5.8\) times closer to the target than
@@ -4029,14 +4059,14 @@ where the learning transient has not ended by \(T=10^5\)
 \caption{Imbalance \(\|S_T\|_2\) at \(T=10^5\) against the margin \(c\) for
 six targets over the same sixteen channels (right to left: Black/other,
 ethnicity, age, age\(\times\)sex, Black\(\times\)age, ethnicity\(\times\)age;
-120 runs). Algorithm~\ref{alg:ucb-sampling} uses radius \(0.3\,r_a\).}
+120 runs). Algorithm~\ref{alg:ucb-sampling} uses \(\beta=0.3\).}
 \label{fig:app-ladder}
 \end{figure}
 
 \begin{table}[!ht]
 \caption{Margin ladder over the sixteen channels (120 replications):
 error at \(T=785\), \(\|S_T\|\) and \(c\|S_T\|\) at \(T=10^5\).
-Algorithm~\ref{alg:ucb-sampling} uses radius \(0.3\,r_a\).}
+Algorithm~\ref{alg:ucb-sampling} uses \(\beta=0.3\).}
 \label{tab:ladder}
 \centering\small
 \begin{tabular}{lrr|rrr|rr|rr}
@@ -4045,7 +4075,7 @@ Algorithm~\ref{alg:ucb-sampling} uses radius \(0.3\,r_a\).}
 target & \(K\) & \(c\) & Alg.~\ref{alg:ucb-sampling} & oracle & uniform & Alg.~\ref{alg:ucb-sampling} & oracle & Alg.~\ref{alg:ucb-sampling} & oracle\\
 \hline
 Black / other & 2 & 0.1275 & 0.0037 & 0.0011 & 0.0220 & 0.9 & 0.9 & 0.12 & 0.12\\
-ethnicity & 3 & 0.0822 & 0.0070 & 0.0025 & 0.0407 & 1.9 & 1.8 & 0.15 & 0.15\\
+diagnosed diabetes & 3 & 0.0822 & 0.0070 & 0.0025 & 0.0407 & 1.9 & 1.8 & 0.15 & 0.15\\
 age & 3 & 0.0469 & 0.0115 & 0.0042 & 0.0412 & 3.4 & 3.1 & 0.16 & 0.15\\
 age\(\times\)sex & 4 & 0.0256 & 0.0240 & 0.0099 & 0.0439 & 16.3 & 9.9 & 0.42 & 0.25\\
 Black\(\times\)age & 4 & 0.0086 & 0.0137 & 0.0073 & 0.0454 & 41.4 & 8.4 & 0.36 & 0.07\\
@@ -4061,7 +4091,7 @@ Remark~\ref{rem:constants} with \(\delta=\eta=0.05\) and with
 and \(1.28\)), which is smaller than \(\ell_0+1\), so the table
 understates the bound as stated. In every case \(N(c)\) exceeds the
 horizon, so every round counts as uncertain in the proof. Even
-\(r_a(10^5)=0.022\) exceeds \(c/4=0.021\) for the ethnic target. The bound
+\(r_a(10^5)=0.022\) exceeds \(c/4=0.021\) for the diagnosed diabetes target. The bound
 exceeds the measured imbalance by factors of \(8\times10^5\) to
 \(9\times10^6\).
 
@@ -4074,8 +4104,8 @@ exceeds the measured imbalance by factors of \(8\times10^5\) to
 \hline
 target & \(c\) & \(N(c)\) & \(M(c)\) & bound on \(\|S_T\|\) & measured \(\|S_T\|\) & policy measured\\
 \hline
-ethnicity & 0.082 & \(1.1\cdot10^5\) & \(1.8\cdot10^6\) & \(2.0\cdot10^6\) & 2.5 & Algorithm~\ref{alg:ucb-sampling}\\
-Black\(\times\)age & 0.0086 & \(1.8\cdot10^7\) & \(2.9\cdot10^8\) & \(3.2\cdot10^8\) & 35.0 & radius \(0.3\,r_a\)\\
+diagnosed diabetes & 0.082 & \(1.1\cdot10^5\) & \(1.8\cdot10^6\) & \(2.0\cdot10^6\) & 2.5 & Algorithm~\ref{alg:ucb-sampling}\\
+Black\(\times\)age & 0.0086 & \(1.8\cdot10^7\) & \(2.9\cdot10^8\) & \(3.2\cdot10^8\) & 35.0 & \(\beta=0.3\)\\
 marginal goals & 0.054 & \(3.9\cdot10^5\) & \(6.2\cdot10^6\) & \(7.0\cdot10^6\) & 4.8 & Algorithm~\ref{alg:ucb-sampling}\\
 \hline
 \end{tabular}
@@ -4088,7 +4118,7 @@ marginal goals & 0.054 & \(3.9\cdot10^5\) & \(6.2\cdot10^6\) & \(7.0\cdot10^6\) 
 All cost-aware experiments use the Black/other target (Black: \(15.5\%\),
 other: \(84.5\%\); \(K=2\), margin \(c=0.128\) over all channels) and the
 median costs of the meta-analysis, \(\$72\) for online and \(\$199\) for
-offline channels. No policy discards recruits. The myopic rule uses
+offline channels. No policy discards recruits. The greedy rule uses
 estimated means, and Algorithm~\ref{alg:ucb-sampling} after
 Algorithm~\ref{alg:cost-support} uses the exploration samples, which stay in
 the sample, to estimate the means.
@@ -4104,16 +4134,16 @@ supports qualify, all offline at \(\$199\). The cheap supports have small
 margins because the online and portal channels are close to the target
 (\(13.9\%\) and \(13.4\%\) Black).
 
-\paragraph{The myopic rule on this target.} To correct a deficit of Black
-recruits, the myopic rule chooses clinics South (\(24.5\%\) Black), as
+\paragraph{The greedy rule on this target.} To correct a deficit of Black
+recruits, the greedy rule chooses clinics South (\(24.5\%\) Black), as
 \(I^\star\) does. To correct an excess, online recruits move the share only
 by \(0.016\) per recruit, while Spanish-language clinics (\(0.4\%\) Black)
 move it by \(0.151\), which is more per dollar. The rule therefore settles
 on \(\{\)clinics South, Spanish-language\(\}\) (\(60\%\) and \(36\%\) of
 recruits at \(T=10^5\)), a support with the largest margin, \(0.128\), and
 the highest cost, \(\$199\). This is the situation of
-Example~\ref{ex:myopic}: a cheap source close to the target corrects slowly,
-and the myopic rule replaces it by an expensive one.
+Example~\ref{ex:greedy}: a cheap source close to the target corrects slowly,
+and the greedy rule replaces it by an expensive one.
 
 \paragraph{Cost and error against the sample size.}
 Figure~\ref{fig:app-budget}(a,b) and Table~\ref{tab:cost} report the cost
@@ -4128,7 +4158,7 @@ the cost of the selected support. Of the 200 runs, \(99\) select \(I^\star\),
 and one selects \(\{\)Medicare, Spanish-language\(\}\), whose true hull
 misses \(p_G\); that run stalls at an error of \(1.2\times10^{-2}\) and
 accounts for most of the mean error (\(1.1\times10^{-4}\) at \(T=10^5\),
-against a median of \(3.5\times10^{-5}\)). The myopic rule pays less early
+against a median of \(3.5\times10^{-5}\)). The greedy rule pays less early
 on, while it samples the cheap channels to learn their means (\(\$149\) at
 \(T\approx10^3\)), but more than
 Algorithm~\ref{alg:cost-support}\(\to\)\ref{alg:ucb-sampling} from
@@ -4147,7 +4177,7 @@ the error after a total budget between \(\$1\)M and \(\$16\)M. With
 \(\$16\)M, Algorithm~\ref{alg:cost-support}\(\to\)\ref{alg:ucb-sampling}
 (\(n=1{,}600\)) recruits \(140{,}100\) participants (\(\$114\) each) and
 reaches an error of \(2.8\times10^{-5}\) (median \(1.6\times10^{-5}\)); the
-myopic rule recruits \(81{,}300\) (\(\$197\) each) and reaches
+greedy rule recruits \(81{,}300\) (\(\$197\) each) and reaches
 \(1.2\times10^{-5}\) (median \(8.5\times10^{-6}\)), as does
 Algorithm~\ref{alg:ucb-sampling} on all channels. Even with known means, the
 closed loop on \(I^\star\) recruits \(175{,}500\) participants and reaches
@@ -4164,16 +4194,16 @@ per recruit, exploration included; dotted: \(B(I^\star)\). (b) Error
 against the sample size. (c) Error at a fixed total budget.
 Algorithm~\ref{alg:cost-support} uses \(c_0=0.02\) and \(n\) exploration
 samples per channel; Algorithm~\ref{alg:ucb-sampling}, also after
-Algorithm~\ref{alg:cost-support}, and the myopic rule use radius
-\(0.3\,r_a\).}
+Algorithm~\ref{alg:cost-support}, and the greedy rule use
+\(\beta=0.3\).}
 \label{fig:app-budget}
 \end{figure}
 
 \begin{table}[!ht]
 \caption{Cost-aware sampling for the Black/other target at \(T=10^5\) (200
 replications). Algorithm~\ref{alg:ucb-sampling}, also after
-Algorithm~\ref{alg:cost-support} (\(c_0=0.02\)), and the myopic rule use
-radius \(0.3\,r_a\); Algorithm~\ref{alg:cost-support} never returned
+Algorithm~\ref{alg:cost-support} (\(c_0=0.02\)), and the greedy rule use
+\(\beta=0.3\); Algorithm~\ref{alg:cost-support} never returned
 \textsc{Fail}.}
 \label{tab:cost}
 \centering\small
@@ -4189,25 +4219,11 @@ oracle closed loop on all channels & known & \(1.1\cdot10^{-5}\) & 199.00\\
 Alg.~\ref{alg:cost-support}\(\to\)\ref{alg:ucb-sampling}, \(n=400\) & learnt & \(2.6\cdot10^{-3}\) & 107.21\\
 Alg.~\ref{alg:cost-support}\(\to\)\ref{alg:ucb-sampling}, \(n=800\) & learnt & \(3.8\cdot10^{-4}\) & 113.53\\
 Alg.~\ref{alg:cost-support}\(\to\)\ref{alg:ucb-sampling}, \(n=1{,}600\) & learnt & \(1.1\cdot10^{-4}\) & 123.26\\
-myopic cost-ratio rule & learnt & \(1.1\cdot10^{-5}\) & 197.08\\
+greedy rule & learnt & \(1.1\cdot10^{-5}\) & 197.08\\
 Algorithm~\ref{alg:ucb-sampling} on all channels & learnt & \(1.1\cdot10^{-5}\) & 198.79\\
 \hline
 \end{tabular}
 \end{table}
-
-\paragraph{The myopic rule on Example~\ref{ex:myopic}.} A simulation of
-Example~\ref{ex:myopic} (100 replications, \(T=10^5\)) confirms the
-analysis. The myopic rule with the tie rule of
-Algorithm~\ref{alg:sign-based} samples \(B\) and \(C\) in equal proportions
-and pays \(2.00\) per recruit; the adaptive rule on \(\{A,B\}\) pays
-\(1.00\); and Algorithm~\ref{alg:cost-support} (\(n=1{,}000\), \(c_0=0.1\))
-followed by Algorithm~\ref{alg:ucb-sampling} pays \(1.02\), the excess
-being the exploration of \(C\). Because \(p_G=0.5\), \(S_t\) often returns
-to zero in this example, so the tie rule matters: breaking ties towards the
-least-sampled source lowers the cost of the myopic rule to \(1.62\), still
-\(62\%\) above the support-based rule. With estimated means (radius
-\(0.3\,r_a\)), the myopic rule pays \(1.61\). On the NHIS instance \(S_t\)
-rarely returns to zero, and the tie rule plays no role.
 
 \paragraph{Support selection.} Table~\ref{tab:selection} and
 Figure~\ref{fig:app-cost}(a,b) run Algorithm~\ref{alg:cost-support} alone
@@ -4270,7 +4286,7 @@ the cost, because exploration is spread uniformly over all channels.
 
 \begin{table}[!ht]
 \caption{Algorithm~\ref{alg:cost-support}\(\to\)\ref{alg:ucb-sampling}
-(radius \(0.3\,r_a\)) for the Black/other target at \(T=10^5\) (100
+(\(\beta=0.3\)) for the Black/other target at \(T=10^5\) (100
 replications): error and cost per recruit.}
 \label{tab:c0}
 \centering\small
@@ -4303,11 +4319,11 @@ on every curve.}
 \label{app:exp-downstream}
 
 Composition matching controls the groups in the target, not other
-variables. In a respondent-level simulation for the ethnic target, each
+variables. In a respondent-level simulation for the diagnosed diabetes target, each
 recruit carries six health variables from NHIS. Table~\ref{tab:downstream}
 reports the bias of their sample means after \(2\times10^4\) recruits
 (standard deviations across replications are at most \(0.7\) pp).
-Algorithm~\ref{alg:ucb-sampling} (radius \(0.3\,r_a\)) matches the ethnic
+Algorithm~\ref{alg:ucb-sampling} (\(\beta=0.3\)) matches the ethnic
 composition to within \(1.1\times10^{-4}\), so its remaining bias arises
 within groups: the
 channels it relies on over-represent, within each ethnic group, adults in
@@ -4334,7 +4350,7 @@ post-stratification on the three ethnic groups.}
  & insulin & hypertension & heart disease & obesity & disability & fair/poor health & design effect\\
 \hline
 population value (\%) & 31.9 & 73.1 & 16.3 & 51.4 & 23.8 & 42.8 & \\
-Alg.~\ref{alg:ucb-sampling}, radius \(0.3\,r_a\) & \(+1.7\) & \(+2.4\) & \(+1.5\) & \(+2.7\) & \(+3.2\) & \(+4.1\) & 1.000\\
+Alg.~\ref{alg:ucb-sampling}, \(\beta=0.3\) & \(+1.7\) & \(+2.4\) & \(+1.5\) & \(+2.7\) & \(+3.2\) & \(+4.1\) & 1.000\\
 oracle closed loop & \(+1.0\) & \(+1.7\) & \(+0.6\) & \(+4.1\) & \(+2.1\) & \(+2.6\) & 1.000\\
 online only & \(-0.1\) & \(-0.9\) & \(-0.5\) & \(+4.4\) & \(-2.9\) & \(-3.6\) & 1.030\\
 uniform & \(+2.5\) & \(+2.1\) & \(+2.6\) & \(-0.1\) & \(+3.7\) & \(+5.5\) & 1.006\\

@@ -26,7 +26,7 @@ REF = CFG["reference_lines"]
 SEQ = CFG["sequence_palette"]
 FULL_W = 6.75                                  # AISTATS text width (in)
 
-LADDER_LABEL = {"L1_K2_black": "Black / other", "L2_K3_eth": "ethnicity",
+LADDER_LABEL = {"L1_K2_black": "Black / other", "L2_K3_eth": "diagnosed diabetes",
                 "L3_K3_age": "age", "L5_K4_agesex": "age $\\times$ sex",
                 "L4_K4_blackage": "Black $\\times$ age", "L6_K6_ethage": "ethnicity $\\times$ age"}
 
@@ -86,13 +86,13 @@ def fig_main():
     ax[0].set_ylim(5e-7, 3)
     ax[0].set_ylabel("$|\\widehat p_T-p_G|$", labelpad=1)
     ax[0].set_title("(a) 2 channels (online, landline); share 65+", pad=3)
-    # (b) sixteen channels, ethnic composition
+    # (b) sixteen channels, diagnosed diabetes target (ethnic composition)
     d = load_rates(["E2_rates_eth_ucb.csv", "E2_rates_eth_ref.csv"])
     plot_rates(ax[1], d, ["ALG2(beta=1)", "ALG2(beta=0.3)", "ALG2(greedy)", "ORACLE-CL", "ORACLE-OL",
                           "ETC(eps=0.1)", "N1-CHEAPEST", "N2-UNIFORM"], "err_l2_mean", etc_at=1e5)
     ax[1].set_ylim(5e-6, 0.6)
     ax[1].set_ylabel("$\\|\\widehat p_T-p_G\\|_2$", labelpad=1)
-    ax[1].set_title("(b) 16 channels; ethnic composition ($K=3$)", pad=3)
+    ax[1].set_title("(b) 16 channels; diagnosed diabetes ($K=3$)", pad=3)
     for a in ax[:2]:
         a.set_xlabel("recruits $T$", labelpad=1)
         a.set_xlim(8, 1.3e5)
@@ -108,7 +108,7 @@ def fig_main():
                columnspacing=1.4, handlelength=2.4, fontsize=5.9)
     # (c) cost-aware sampling: cost per recruit against the sample size (Black/other target, median costs)
     plot_cost_per_recruit(ax[2], ["ALG3+2(n=1600,c0=0.02)", "MYOPIC-COST", "ALG2(beta=0.3)", "ORACLE-CL(I*)"],
-                          labels={"ALG3+2(n=1600,c0=0.02)": "Alg. 3 $\\to$ 2", "MYOPIC-COST": "myopic rule",
+                          labels={"ALG3+2(n=1600,c0=0.02)": "Alg. 3 $\\to$ 2", "MYOPIC-COST": "greedy rule",
                                   "ALG2(beta=0.3)": "Alg. 2, all", "ORACLE-CL(I*)": "oracle on $I^\\star$"})
     ax[2].set_title("(c) 16 channels; Black / other, cost", pad=3)
     ax[2].legend(loc="lower left", fontsize=5.4, bbox_to_anchor=(0.0, 0.11), ncol=2, columnspacing=0.8,
@@ -120,7 +120,7 @@ BUDGET_STYLE = {
     "ALG3+2(n=1600,c0=0.02)": dict(label="Alg. 3 $\\to$ Alg. 2 ($n=1600$)", color="#000000", lw=1.7),
     "ALG3+2(n=800,c0=0.02)": dict(label="Alg. 3 $\\to$ Alg. 2 ($n=800$)", color="#555555", lw=1.0, ls="--"),
     "ALG3+2(n=400,c0=0.02)": dict(label="Alg. 3 $\\to$ Alg. 2 ($n=400$)", color="#999999", lw=1.0, ls=":"),
-    "MYOPIC-COST": dict(label="myopic rule", color="#D55E00", lw=1.2, marker="s", ms=2.0),
+    "MYOPIC-COST": dict(label="greedy rule", color="#D55E00", lw=1.2, marker="s", ms=2.0),
     "ALG2(beta=0.3)": dict(label="Alg. 2, all channels", color="#555555", lw=1.0, ls="-."),
     "ORACLE-CL(I*)": dict(label="oracle closed loop on $I^\\star$", color="#0072B2", lw=1.0),
 }

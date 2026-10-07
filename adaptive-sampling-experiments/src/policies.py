@@ -65,8 +65,9 @@ class Alg2UCB(Policy):
         return a
 
 
-class MyopicCost(Policy):
-    """Cost-ratio heuristic rejected in sec. 6: argmin_a <S_t, muhat_a - p_G> / ell_a."""
+class GreedyCost(Policy):
+    """Greedy cost-aware rule (Algorithm 4 in the appendix of the manuscript):
+    argmin_a (<S_t, muhat_a - p_G> - beta * r_a(N_a) * ||S_t||) / ell_a. Result files label it MYOPIC-COST."""
     def __init__(self, beta=0.3, delta=0.05, oracle=False, tie_arm=None, tag=None):
         self.beta, self.delta, self.oracle = beta, delta, oracle
         self.tie_arm = tie_arm                  # arm used when S_t = 0 (default: least sampled)
