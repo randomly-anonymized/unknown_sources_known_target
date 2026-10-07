@@ -624,16 +624,12 @@ A_{t+1}
 \operatorname*{arg\,min}_{a\in[m]}
 \frac{\langle S_t,\mu_a-p_G\rangle}{\ell_a}.
 \]
-When the means are unknown, it uses the optimistic estimates of
-Algorithm~\ref{alg:ucb-sampling} (Algorithm~\ref{alg:greedy} in
-Appendix~\ref{app:exp-impl}). The greedy rule needs no exploration phase, but
-it only asks which source looks cheapest for correcting the error
-\emph{right now}, whereas we want the entire final sample to have the right
+The full algorithm is stated in the Appendix~\ref{app:exp-impl}). The greedy rule asks which source looks cheapest for correcting the error
+\emph{right now}. However, we would like the entire final sample to have the right
 composition at the smallest possible total cost. A choice that looks cheap
-at one round may force us to use expensive sources later. Our second method
-therefore first asks which combination of sampling methods can produce
-\(p_G\) at the lowest average cost, and then runs the adaptive sampling rule
-using that combination. The following example shows that the difference can
+at one round may force us to use expensive sources later. 
+
+The following example shows that the difference can
 be large.
 
 \begin{example}[The greedy rule can overpay]
@@ -678,7 +674,10 @@ representing \(p_G\) is unique; our support-selection theorem can therefore
 retain the \(T^{-1}\) representation rate while also controlling the cost of
 the selected support.
 
-\subsection{The Algorithm}
+% \subsection{The Algorithm}
+Our second method first asks which combination of sampling methods can produce
+\(p_G\) at the lowest average cost, and then runs the adaptive sampling rule in Algorithm~\ref{alg:ucb-sampling} 
+using that combination.
 
 For the cost results below, we restrict to the categorical setting
 \[
@@ -1141,7 +1140,7 @@ smaller margin.
 % estimated distributions.}, the product \(c\|S_T\|\) remains of comparable
 % size across the different targets: it lies in \([0.07,0.25]\) for the
 % oracle and in \([0.12,0.42]\) for
-% Algorithm~\ref{alg:ucb-sampling} with \(\beta=0.3\)
+% Algorithm~\ref{alg:ucb-sampling} with radius \(0.3\,r_a\)
 % (Appendix Figure~\ref{fig:app-ladder}). Thus, the observed imbalance grows roughly as 
 % \(1/c\), consistent with the dependence on \(c\) in
 % Theorem~\ref{thm:multidimensional-guarantee}.
@@ -1162,7 +1161,7 @@ smaller margin.
 % three-source support with margin at least \(c_0\) is
 % \(I^\star=\{\)online, southern clinics, western clinics\(\}\), costing
 % \(\$90.70\) per recruit, against \(\$108\) for both the cost-unaware closed
-% loop and the greedy rule of Section~\ref{sec:cost}. A feasible mixture
+% loop and the myopic rule of Section~\ref{sec:cost}. A feasible mixture
 % costing \(\$81.68\) exists, but its margin is only \(0.004\).
 
 % We fix a total budget and compare the error \(\|\widehat p_T-p_G\|_2\),
@@ -3957,6 +3956,7 @@ estimate, and at least \(10\%\) of runs finish \(0.03\) or more from
 radius is larger than needed here: \(\beta=0.3\) reaches the
 \(N_{90}\) criterion three times sooner.
 
+
 \begin{table}[!ht]
 \caption{Diagnosed diabetes target, 16 channels (250 replications). Error
 \(\|\widehat p_T-p_G\|_2\) at \(T=832\) (ETC still explores); \(N_{90}\):
@@ -3979,6 +3979,7 @@ uniform & 0.0402 & \(>10^5\) & 3{,}517 & 183\\
 \hline
 \end{tabular}
 \end{table}
+
 
 \paragraph{Marginal goals.} Diversity goals are often stated per
 attribute rather than per cell. With the multi-label target of
@@ -4085,19 +4086,22 @@ ethnicity\(\times\)age & 6 & 0.0014 & 0.0206 & 0.0113 & 0.0563 & 261.4 & 60.8 & 
 \end{table}
 
 \paragraph{Constants of Theorem~\ref{thm:multidimensional-guarantee}.}
-Table~\ref{tab:constants} evaluates the constants of
-Remark~\ref{rem:constants} with \(\delta=\eta=0.05\) and with
-\(R^2=\max_y\|y-p_G\|^2\) over the possible labels \(y\) (\(1.18\), \(1.23\)
-and \(1.28\)), which is smaller than \(\ell_0+1\), so the table
-understates the bound as stated. In every case \(N(c)\) exceeds the
-horizon, so every round counts as uncertain in the proof. Even
-\(r_a(10^5)=0.022\) exceeds \(c/4=0.021\) for the diagnosed diabetes target. The bound
-exceeds the measured imbalance by factors of \(8\times10^5\) to
-\(9\times10^6\).
+Table~\ref{tab:constants} evaluates the constants appearing in the proof of
+Theorem~\ref{thm:multidimensional-guarantee} with~\(\delta=\eta=0.05\).  We use the exact value
+\[
+R^2=\max_y \|y-p_G\|^2
+\]
+over the possible labels \(y\), which is \(1.18\), \(1.23\), and \(1.28\)
+for the three instances below.  In every case \(N(c)\) exceeds the horizon,
+so every round counts as uncertain in the proof.  Even
+\(r_a(10^5)=0.022\) exceeds \(c/4=0.021\) for the diagnosed diabetes target.
+The resulting bound exceeds the measured imbalance by factors of
+\(8\times10^5\) to \(9\times10^6\).
 
 \begin{table}[!ht]
-\caption{Constants of Theorem~\ref{thm:multidimensional-guarantee}
-(Remark~\ref{rem:constants}) and measured imbalance at \(T=10^5\).}
+\caption{Constants from the proof of
+Theorem~\ref{thm:multidimensional-guarantee} and measured imbalance at
+\(T=10^5\).}
 \label{tab:constants}
 \centering\small
 \begin{tabular}{lrrrrrr}
