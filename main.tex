@@ -86,13 +86,13 @@
 \aistatsaddress{ Institution 1 \And  Institution 2 \And Institution 3 } ]
 
 \begin{abstract}
-  This paper studies how to sequentially sample from multiple unknown source populations to match a known target population using as few samples as possible without rejection. This problem arises in polling, medical trials, and in scientific discovery. We give an algorithm for the simplest case of two sources and show that it matches a lower bound up to constant factors. We extend this algorithm to multiple sources and to when sources have different costs. Experiments based on the 2023 National Health Interview Survey show the benefit of this approach over baselines.
+  This paper studies how to sequentially sample from multiple unknown source populations to match a known target population using as few samples as possible without rejection. Rejection is often not an option: in a clinical trial, turning away an eligible volunteer because their demographic group is already well represented excludes them on the basis of race or ethnicity, which is prohibited in federally funded research. This problem arises in polling, medical trials, and in scientific discovery. We give an algorithm for the simplest case of two sources and show that it matches a lower bound up to constant factors. We extend this algorithm to multiple sources and to when sources have different costs. Experiments based on the 2023 National Health Interview Survey show the benefit of this approach over baselines.
 \end{abstract}
 
 
 \section{Introduction}
 % the problem: a gripping example
-Imagine you are tasked with recruiting individuals to test a promising new medical treatment. You are asked to ensure that the overall population of individuals approximates the target population of the treatment. Further, to keep costs down, you must recruit as few individuals as possible, until your approximation error of the target is below a specific threshold. You have at your disposal different sources to select individuals for the test: online recruitment, telephone interviews, door-to-door questioning, and other outreach sources. While the population of each source is unknown, each is likely biased. For instance, online recruitment may over-represent younger subjects, whereas telephone interviews may over-represent older ones. How should you select the sources to best represent the target?
+Imagine you are tasked with recruiting individuals to test a promising new medical treatment. You are asked to ensure that the overall population of individuals approximates the target population of the treatment. Further, to keep costs down, you must recruit as few individuals as possible, until your approximation error of the target is below a specific threshold. You have at your disposal different sources to select individuals for the test: online recruitment, telephone interviews, door-to-door questioning, and other outreach sources. While the population of each source is unknown, each is likely biased. For instance, online recruitment may over-represent younger subjects, whereas telephone interviews may over-represent older ones. Importantly, you cannot simply recruit from the cheapest source and turn away volunteers from groups that are already well represented. Rejecting an eligible volunteer because of their race, color or national origin is prohibited in any program receiving federal funds by Title~VI of the Civil Rights Act of 1964 \citep{titleVI1964}, and institutional review boards must ensure that the selection of subjects is equitable \citep{commonrule2018}. The composition of the trial can thus only be controlled through where to recruit. How should you select the sources to best represent the target?
 
 % why it matters
 This question of representative, sample-efficient study design is at the heart of many real problems in medicine \citep{sanathanan1991randomized}, polling \citep{gelman2016high}, and scientific discovery \citep{gao2022sample}. Continuing the above example, in medical treatment trials of type 1 diabetes research has found large disparities in ethnic representation, including in key trials required for FDA approval of commercial devices \citep{akturk2021inequity}. This is a matter of life and death for underrepresented populations: even though only 9.3\% of type 1 diabetes cases in the United States affect Black populations \citep{akturk2021inequity}, their mortality rates are twice as high as other ethnic groups \citep{saydah2017disparities}. 
@@ -1053,15 +1053,13 @@ the cheaper support has a smaller margin.
 
 \paragraph{Limitations.}
 Exploration in Algorithm~\ref{alg:cost-support} is expensive (\(\$4.69\)M
-here) and pays off only for large samples, and a too short exploration
+here), and a too short exploration
 selects supports that cannot reach \(p_G\). Variables outside the target
 need not match: after matching ethnicity, adults in fair or poor health are
-overrepresented by \(4.1\) points. Reweighting is no substitute: it is
-cheap for estimates (post-stratifying an online-only sample has design
-effect \(1.03\)), but it cannot enrol participants who were never recruited
-(Appendix~\ref{app:exp-downstream}).
-Variables that affect the endpoint belong in the target, at the price of a
-smaller margin.
+overrepresented by \(4.1\) points. Reweighting is cheap for estimates
+(design effect \(1.03\)) but cannot enrol participants who were never
+recruited (Appendix~\ref{app:exp-downstream}).
+Variables that affect the endpoint belong in the target.
 
 % %\paragraph{Setup.}
 % We use adults with diagnosed diabetes in the 2023 National Health Interview
